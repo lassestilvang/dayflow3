@@ -1,0 +1,36 @@
+{
+  "buildCommand": "pnpm build",
+  "devCommand": "pnpm dev",
+  "installCommand": "pnpm install",
+  "framework": "nextjs",
+  "outputDirectory": ".next",
+  "functions": {
+    "src/app/api/**/*.ts": {
+      "maxDuration": 30
+    }
+  },
+  "env": {
+    "NEXT_TELEMETRY_DISABLED": "1"
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "s-maxage=1, stale-while-revalidate=59"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/auth/:path*",
+      "destination": "/auth/:path*"
+    },
+    {
+      "source": "/((?!api|_next/static|_next/image|favicon.ico).*)",
+      "destination": "/index.html"
+    }
+  ]
+}
