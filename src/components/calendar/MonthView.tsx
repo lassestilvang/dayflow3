@@ -42,11 +42,12 @@ function DraggableItem({ item, children }: DraggableItemProps) {
   );
 }
 
-function DroppableDay({ date, children, isCurrentMonth, isCurrentDay }: { 
+function DroppableDay({ date, children, isCurrentMonth, isCurrentDay, onClick }: { 
   date: Date; 
   children: React.ReactNode;
   isCurrentMonth: boolean;
   isCurrentDay: boolean;
+  onClick?: () => void;
 }) {
   const { isOver, setNodeRef } = useDroppable({
     id: `date-${format(date, 'yyyy-MM-dd')}`,
@@ -61,6 +62,7 @@ function DroppableDay({ date, children, isCurrentMonth, isCurrentDay }: {
         isCurrentDay && 'bg-blue-50/50',
         isOver && 'bg-accent/30 ring-2 ring-primary'
       )}
+      onClick={onClick}
     >
       {children}
     </div>
@@ -71,7 +73,7 @@ export function MonthView() {
   const { currentDate } = useCalendarStore();
   const { getEventsForDate, updateEvent } = useEventStore();
   const { getTasksForDate, updateTask } = useTaskStore();
-  const { setEditingTask, setEditingEvent } = useUIStore();
+  const { setEditingTask, setEditingEvent, setShowCreateDialog, setCreateDialogData } = useUIStore();
   const [draggedItem, setDraggedItem] = useState<Task | Event | null>(null);
 
   const monthStart = startOfMonth(currentDate);
@@ -171,7 +173,11 @@ await updateTask(item.id, {
   });
 
   const handleDayClick = (date: Date) => {
-    console.log('Navigate to day', date);
+    setCreateDialogData({
+      date,
+      allDay: true,
+    });
+    setShowCreateDialog(true);
   };
 
   return (
@@ -203,12 +209,13 @@ await updateTask(item.id, {
               const isCurrentDay = isToday(date);
 
               return (
-                <DroppableDay 
-                  key={date.toISOString()} 
-                  date={date}
-                  isCurrentMonth={isCurrentMonth}
-                  isCurrentDay={isCurrentDay}
-                >
+<DroppableDay 
+                   key={date.toISOString()} 
+                   date={date}
+                   isCurrentMonth={isCurrentMonth}
+                   isCurrentDay={isCurrentDay}
+                   onClick={() => handleDayClick(date)}
+                 >
                   {/* Date number */}
                   <div 
                     className={cn(

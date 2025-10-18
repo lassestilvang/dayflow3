@@ -8,6 +8,12 @@ interface UIStore {
   notifications: Notification[];
   editingTask: Task | null;
   editingEvent: Event | null;
+  showCreateDialog: boolean;
+  createDialogData: {
+    date: Date;
+    time?: string;
+    allDay?: boolean;
+  } | null;
   
   // Actions
   setSidebarOpen: (open: boolean) => void;
@@ -19,6 +25,8 @@ interface UIStore {
   clearNotifications: () => void;
   setEditingTask: (task: Task | null) => void;
   setEditingEvent: (event: Event | null) => void;
+  setShowCreateDialog: (show: boolean) => void;
+  setCreateDialogData: (data: { date: Date; time?: string; allDay?: boolean } | null) => void;
 }
 
 interface Notification {
@@ -36,6 +44,8 @@ export const useUIStore = create<UIStore>((set, get) => ({
   notifications: [],
   editingTask: null,
   editingEvent: null,
+  showCreateDialog: false,
+  createDialogData: null,
 
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
   
@@ -70,4 +80,8 @@ export const useUIStore = create<UIStore>((set, get) => ({
   setEditingTask: (task) => set({ editingTask: task }),
   
   setEditingEvent: (event) => set({ editingEvent: event }),
+  
+  setShowCreateDialog: (show) => set({ showCreateDialog: show }),
+  
+  setCreateDialogData: (data) => set({ createDialogData: data }),
 }));

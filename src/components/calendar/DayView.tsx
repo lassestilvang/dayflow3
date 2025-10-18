@@ -63,7 +63,7 @@ function DroppableHour({ hour, children }: { hour: number; children: React.React
   );
 }
 
-function DroppableAllDay({ children }: { children: React.ReactNode }) {
+function DroppableAllDay({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
   const { isOver, setNodeRef } = useDroppable({
     id: 'all-day',
   });
@@ -75,6 +75,7 @@ function DroppableAllDay({ children }: { children: React.ReactNode }) {
         'border-b border-border bg-muted/30',
         isOver && 'bg-accent/20'
       )}
+      onClick={onClick}
     >
       {children}
     </div>
@@ -85,7 +86,7 @@ export function DayView() {
   const { currentDate } = useCalendarStore();
   const { getEventsForDate, updateEvent } = useEventStore();
   const { getTasksForDate, updateTask } = useTaskStore();
-  const { setEditingTask, setEditingEvent } = useUIStore();
+  const { setEditingTask, setEditingEvent, setShowCreateDialog, setCreateDialogData } = useUIStore();
   const [draggedItem, setDraggedItem] = useState<Task | Event | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -223,7 +224,13 @@ export function DayView() {
   });
 
   const handleTimeSlotClick = (hour: number) => {
-    console.log('Create event at', currentDate, hour);
+    const time = `${hour.toString().padStart(2, '0')}:00`;
+    setCreateDialogData({
+      date: currentDate,
+      time,
+      allDay: false,
+    });
+    setShowCreateDialog(true);
   };
 
   const handleTaskCompleteToggle = async (taskId: string, completed: boolean, e: React.MouseEvent) => {
@@ -239,7 +246,13 @@ return (
     <>
       <div className="flex-1 overflow-auto bg-background relative">
         <div className="max-w-4xl mx-auto relative">
-          <DroppableAllDay>
+          <DroppableAllDay onClick={() => {
+            setCreateDialogData({
+              date: currentDate,
+              allDay: true,
+            });
+            setShowCreateDialog(true);
+          }}>
             <div className="flex">
               <div className="w-20 py-2 pr-4 text-right text-sm font-medium text-muted-foreground sticky left-0 bg-background">
                 All day

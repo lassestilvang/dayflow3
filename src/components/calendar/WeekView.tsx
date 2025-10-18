@@ -45,10 +45,11 @@ function DraggableItem({ item, children }: DraggableItemProps) {
   );
 }
 
-function DroppableSlot({ date, hour, children }: { 
+function DroppableSlot({ date, hour, children, onClick }: { 
   date: Date; 
   hour: number; 
   children: React.ReactNode;
+  onClick?: () => void;
 }) {
   const slotId = `${format(date, 'yyyy-MM-dd')}-hour-${hour}`;
   const { isOver, setNodeRef } = useDroppable({
@@ -62,15 +63,17 @@ function DroppableSlot({ date, hour, children }: {
         'h-[60px] border-b border-border relative group hover:bg-accent/50 cursor-pointer',
         isOver && 'bg-accent/20'
       )}
+      onClick={onClick}
     >
       {children}
     </div>
   );
 }
 
-function DroppableAllDaySlot({ date, children }: { 
+function DroppableAllDaySlot({ date, children, onClick }: { 
   date: Date; 
   children: React.ReactNode;
+  onClick?: () => void;
 }) {
   const slotId = `${format(date, 'yyyy-MM-dd')}-all-day`;
   const { isOver, setNodeRef } = useDroppable({
@@ -85,6 +88,7 @@ function DroppableAllDaySlot({ date, children }: {
         isToday(date) && 'bg-blue-50/50 border-l-2 border-l-blue-200',
         isOver && 'bg-accent/20'
       )}
+      onClick={onClick}
     >
       {children}
     </div>
@@ -95,7 +99,7 @@ export function WeekView() {
   const { getWeekDates } = useCalendarStore();
   const { getEventsForDate, updateEvent } = useEventStore();
   const { getTasksForDate, updateTask } = useTaskStore();
-  const { setEditingTask, setEditingEvent } = useUIStore();
+  const { setEditingTask, setEditingEvent, setShowCreateDialog, setCreateDialogData } = useUIStore();
   const [draggedItem, setDraggedItem] = useState<Task | Event | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   
@@ -269,7 +273,17 @@ export function WeekView() {
                 const allDayTasks = getTasksForDate(date).filter(task => task.allDay);
                 
                 return (
-                  <DroppableAllDaySlot key={dateIndex} date={date}>
+                  <DroppableAllDaySlot 
+                    key={dateIndex} 
+                    date={date}
+                    onClick={() => {
+                      setCreateDialogData({
+                        date,
+                        allDay: true,
+                      });
+                      setShowCreateDialog(true);
+                    }}
+                  >
                     <div className="space-y-1">
                       {allDayEvents.map((event) => (
                         <DraggableItem key={event.id} item={event}>
@@ -383,7 +397,20 @@ export function WeekView() {
                       });
 
                       return (
-                        <DroppableSlot key={hour} date={date} hour={hour}>
+                        <DroppableSlot 
+                          key={hour} 
+                          date={date} 
+                          hour={hour}
+                          onClick={() => {
+                            const time = `${hour.toString().padStart(2, '0')}:00`;
+                            setCreateDialogData({
+                              date,
+                              time,
+                              allDay: false,
+                            });
+                            setShowCreateDialog(true);
+                          }}
+                        >
                           {/* Events and Tasks */}
                           <div className="absolute inset-0 p-1 space-y-1">
                             {events.map((event) => (
