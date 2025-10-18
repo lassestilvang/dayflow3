@@ -4,13 +4,21 @@ import { format, isToday, setHours } from 'date-fns';
 import { useState, useEffect } from 'react';
 import { DragOverlay } from '@dnd-kit/core';
 import { useDraggable, useDroppable, useDndMonitor } from '@dnd-kit/core';
-import { useCalendarStore, useEventStore, useTaskStore, useUIStore } from '@/store';
+import { useCalendarStore, useEventStore, useTaskStore, useUIStore, useSettingsStore } from '@/store';
 import { cn } from '@/lib/utils';
 import { Task, Event } from '@/types';
 import { Checkbox } from '@/components/ui/checkbox';
+import { formatTime } from '@/lib/dateUtils';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const HOUR_HEIGHT = 60; // pixels per hour
+
+// Helper function to create a date with specific hour and minutes set to 0
+function createHourDate(hour: number): Date {
+  const date = new Date();
+  date.setHours(hour, 0, 0, 0);
+  return date;
+}
 
 // Helper functions for duration calculations
 function getEventDuration(event: Event): number {
@@ -134,6 +142,7 @@ export function WeekView() {
   const { getEventsForDate, updateEvent } = useEventStore();
   const { getTasksForDate, updateTask } = useTaskStore();
   const { setEditingTask, setEditingEvent, setCreateDialogData } = useUIStore();
+  const { settings } = useSettingsStore();
   const [draggedItem, setDraggedItem] = useState<Task | Event | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   
@@ -381,9 +390,9 @@ export function WeekView() {
                   className="border-b border-border flex items-start justify-end pr-2 pt-1"
                   style={{ height: `${HOUR_HEIGHT}px` }}
                 >
-                  <span className="text-xs text-muted-foreground font-medium">
-                    {format(setHours(new Date(), hour), 'ha')}
-                  </span>
+<span className="text-xs text-muted-foreground font-medium">
+                     {formatTime(createHourDate(hour), settings)}
+                   </span>
                 </div>
               ))}
             </div>
@@ -459,10 +468,10 @@ return (
                                    setEditingEvent(event);
                                  }}
                                >
-                                 <div className="font-medium truncate">{event.title}</div>
-                                 <div className="opacity-75">
-                                   {format(new Date(event.startTime), 'h:mm')} - {format(new Date(event.endTime), 'h:mm')}
-                                 </div>
+<div className="font-medium truncate">{event.title}</div>
+                                  <div className="opacity-75">
+                                    {formatTime(new Date(event.startTime), settings)} - {formatTime(new Date(event.endTime), settings)}
+                                  </div>
                                </div>
                              </DraggableItem>
                            </div>

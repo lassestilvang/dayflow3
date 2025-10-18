@@ -1,44 +1,46 @@
-'use client';
+"use client";
 
-import { format } from 'date-fns';
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  Calendar as CalendarIcon,
-  LayoutGrid
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { ThemeToggle } from '@/components/ui/theme-toggle';
-import { useCalendarStore } from '@/store';
+
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useCalendarStore, useSettingsStore } from "@/store";
+import { formatDate } from "@/lib/dateUtils";
 
 export function Header() {
-  const { 
-    currentDate, 
-    view, 
-    setView, 
-    navigatePrevious, 
-    navigateNext, 
+  const {
+    currentDate,
+    view,
+    setView,
+    navigatePrevious,
+    navigateNext,
     navigateToday,
     getWeekStart,
-    getWeekEnd
+    getWeekEnd,
   } = useCalendarStore();
+  const { settings } = useSettingsStore();
 
   const formatHeaderDate = () => {
     switch (view) {
-      case 'day':
-        return format(currentDate, 'EEEE, MMMM d, yyyy');
-      case 'week':
+      case "day":
+        return formatDate(currentDate, settings);
+      case "week":
         const weekStart = getWeekStart();
         const weekEnd = getWeekEnd();
         if (weekStart.getMonth() === weekEnd.getMonth()) {
-          return format(weekStart, 'MMMM d') + ' – ' + format(weekEnd, 'd, yyyy');
+          return (
+            formatDate(weekStart, settings) + " – " + formatDate(weekEnd, settings)
+          );
         } else {
-          return format(weekStart, 'MMMM d') + ' – ' + format(weekEnd, 'MMMM d, yyyy');
+          return (
+            formatDate(weekStart, settings) +
+            " – " +
+            formatDate(weekEnd, settings)
+          );
         }
-      case 'month':
-        return format(currentDate, 'MMMM yyyy');
+      case "month":
+        return formatDate(currentDate, settings);
       default:
-        return '';
+        return "";
     }
   };
 
@@ -56,51 +58,36 @@ export function Header() {
           <Button variant="ghost" size="sm" onClick={navigateNext}>
             <ChevronRight className="h-4 w-4" />
           </Button>
-          
+
           {/* Current Date Display */}
-          <h2 className="text-xl font-semibold ml-4">
-            {formatHeaderDate()}
-          </h2>
+          <h2 className="text-xl font-semibold ml-4">{formatHeaderDate()}</h2>
         </div>
 
-        {/* View Switcher */}
+        {/* View Switcher - aligned to right */}
         <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
           <Button
-            variant={view === 'day' ? 'default' : 'ghost'}
+            variant={view === "day" ? "default" : "ghost"}
             size="sm"
-            onClick={() => setView('day')}
+            onClick={() => setView("day")}
             className="h-8 px-3"
           >
             Day
           </Button>
           <Button
-            variant={view === 'week' ? 'default' : 'ghost'}
+            variant={view === "week" ? "default" : "ghost"}
             size="sm"
-            onClick={() => setView('week')}
+            onClick={() => setView("week")}
             className="h-8 px-3"
           >
             Week
           </Button>
           <Button
-            variant={view === 'month' ? 'default' : 'ghost'}
+            variant={view === "month" ? "default" : "ghost"}
             size="sm"
-            onClick={() => setView('month')}
+            onClick={() => setView("month")}
             className="h-8 px-3"
           >
             Month
-          </Button>
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center gap-2">
-          <ThemeToggle />
-          <Button variant="outline" size="sm">
-            <CalendarIcon className="h-4 w-4 mr-2" />
-            Sync
-          </Button>
-          <Button variant="outline" size="sm">
-            <LayoutGrid className="h-4 w-4 mr-2" />
-            Settings
           </Button>
         </div>
       </div>

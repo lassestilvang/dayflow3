@@ -1,6 +1,6 @@
 'use client';
 
-import { format } from 'date-fns';
+
 import { CheckCircle2, Circle, Clock, AlertTriangle, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +8,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Task } from '@/types';
 import { cn } from '@/lib/utils';
+import { useSettingsStore } from '@/store';
+import { formatDate, formatDateTime, formatTimeOnly } from '@/lib/dateUtils';
 
 interface TaskListProps {
   tasks: Task[];
@@ -18,6 +20,7 @@ interface TaskListProps {
 }
 
 export function TaskList({ tasks, title, onTaskClick, onTaskToggle, onTaskDelete }: TaskListProps) {
+  const { settings } = useSettingsStore();
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high': return 'bg-red-100 text-red-800 border-red-200';
@@ -114,7 +117,7 @@ export function TaskList({ tasks, title, onTaskClick, onTaskToggle, onTaskDelete
                       {task.dueDate && (
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Clock className="h-3 w-3" />
-                          {format(new Date(task.dueDate), 'MMM d')}
+                          {formatDate(new Date(task.dueDate), settings)}
                         </div>
                       )}
 
@@ -122,7 +125,7 @@ export function TaskList({ tasks, title, onTaskClick, onTaskToggle, onTaskDelete
                       {task.scheduledDate && task.scheduledTime && (
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Clock className="h-3 w-3" />
-                          {format(new Date(task.scheduledDate), 'MMM d')} at {task.scheduledTime}
+                          {formatDate(new Date(task.scheduledDate), settings)} at {formatTimeOnly(task.scheduledTime, settings)}
                         </div>
                       )}
 
@@ -130,7 +133,7 @@ export function TaskList({ tasks, title, onTaskClick, onTaskToggle, onTaskDelete
                       {task.completed && task.completedAt && (
                         <div className="flex items-center gap-1 text-xs text-green-600">
                           <CheckCircle2 className="h-3 w-3" />
-                          Completed {format(new Date(task.completedAt), 'MMM d, h:mm a')}
+                          Completed {formatDateTime(new Date(task.completedAt), settings)}
                         </div>
                       )}
 

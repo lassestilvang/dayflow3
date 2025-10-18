@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { format, startOfDay } from 'date-fns';
+import { startOfDay } from 'date-fns';
 import { 
   Calendar, 
   CheckSquare, 
@@ -18,11 +18,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { UnifiedForm } from '@/components/forms/UnifiedForm';
-import { useTaskStore, useEventStore, useUIStore } from '@/store';
+import { SettingsModal } from '@/components/settings/SettingsModal';
+import { useTaskStore, useEventStore, useUIStore, useSettingsStore } from '@/store';
 import { Task, Event } from '@/types';
 import { cn } from '@/lib/utils';
 import { useDraggable } from '@dnd-kit/core';
+import { formatDate, formatDateTime } from '@/lib/dateUtils';
 
 interface TaskCategory {
   id: string;
@@ -70,10 +73,12 @@ export function Sidebar() {
   const { data: session } = useSession();
   const [expandedCategories, setExpandedCategories] = useState<string[]>(['inbox', 'work']);
   const [showUnifiedDialog, setShowUnifiedDialog] = useState(false);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [formType, setFormType] = useState<'task' | 'event'>('task');
   const { getTasksByCategory, getOverdueTasks, addTask, updateTask } = useTaskStore();
   const { addEvent } = useEventStore();
   const { setEditingTask } = useUIStore();
+  const { settings, updateSettings } = useSettingsStore();
   
   const overdueTasks = getOverdueTasks();
   const overdueCount = overdueTasks.length;
@@ -182,7 +187,7 @@ export function Sidebar() {
     
     // Check due date first
     if (task.dueDate && task.dueDate < now) {
-      return `Due ${format(task.dueDate, 'MMM d')}`;
+      return `Due ${formatDate(task.dueDate, settings)}`;
     }
     
     // Check scheduled time with duration
@@ -193,9 +198,9 @@ export function Sidebar() {
       
       if (task.duration) {
         scheduledDateTime.setMinutes(scheduledDateTime.getMinutes() + task.duration);
-        return `Ended ${format(scheduledDateTime, 'MMM d, h:mm a')}`;
+        return `Ended ${formatDateTime(scheduledDateTime, settings)}`;
       } else {
-        return `Scheduled ${format(scheduledDateTime, 'MMM d, h:mm a')}`;
+        return `Scheduled ${formatDateTime(scheduledDateTime, settings)}`;
       }
     }
     
@@ -204,7 +209,7 @@ export function Sidebar() {
       const today = startOfDay(now);
       const taskDate = startOfDay(task.scheduledDate);
       if (taskDate < today) {
-        return `Scheduled ${format(taskDate, 'MMM d')}`;
+        return `Scheduled ${formatDate(taskDate, settings)}`;
       }
     }
     
@@ -217,9 +222,7 @@ export function Sidebar() {
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold">Dayflow</h1>
-          <Button variant="ghost" size="sm">
-            <Settings className="h-4 w-4" />
-          </Button>
+          <ThemeToggle />
         </div>
       </div>
 
@@ -377,6 +380,14 @@ export function Sidebar() {
             <p className="text-sm font-medium truncate">User</p>
             <p className="text-xs text-muted-foreground truncate">user@example.com</p>
           </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowSettingsDialog(true)}
+            className="h-8 w-8 p-0"
+          >
+            <Settings className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
@@ -395,6 +406,14 @@ export function Sidebar() {
           />
         </DialogContent>
       </Dialog>
+
+      {/* Settings Dialog */}
+      <SettingsModal
+        isOpen={showSettingsDialog}
+        onOpenChange={setShowSettingsDialog}
+        settings={settings}
+        onSave={updateSettings}
+      />
     </div>
   );
 }

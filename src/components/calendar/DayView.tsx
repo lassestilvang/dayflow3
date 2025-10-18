@@ -1,16 +1,24 @@
 'use client';
 
-import { format, isToday, setHours } from 'date-fns';
+import { isToday, setHours } from 'date-fns';
 import { useState, useEffect } from 'react';
 import { DragOverlay } from '@dnd-kit/core';
 import { useDraggable, useDroppable, useDndMonitor } from '@dnd-kit/core';
-import { useCalendarStore, useEventStore, useTaskStore, useUIStore } from '@/store';
+import { useCalendarStore, useEventStore, useTaskStore, useUIStore, useSettingsStore } from '@/store';
 import { cn } from '@/lib/utils';
 import { Task, Event } from '@/types';
 import { Checkbox } from '@/components/ui/checkbox';
+import { formatTime } from '@/lib/dateUtils';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const HOUR_HEIGHT = 80; // pixels per hour
+
+// Helper function to create a date with specific hour and minutes set to 0
+function createHourDate(hour: number): Date {
+  const date = new Date();
+  date.setHours(hour, 0, 0, 0);
+  return date;
+}
 
 // Helper functions for duration calculations
 function getEventDuration(event: Event): number {
@@ -121,6 +129,7 @@ export function DayView() {
   const { getEventsForDate, updateEvent } = useEventStore();
   const { getTasksForDate, updateTask } = useTaskStore();
   const { setEditingTask, setEditingEvent, setCreateDialogData } = useUIStore();
+  const { settings } = useSettingsStore();
   const [draggedItem, setDraggedItem] = useState<Task | Event | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -381,8 +390,8 @@ return (
             {HOURS.map((hour) => (
               <DroppableHour key={hour} hour={hour}>
                 {/* Time label */}
-                <div className="w-20 py-4 pr-4 text-right text-sm text-muted-foreground font-medium sticky left-0 bg-background z-20">
-                  {format(setHours(new Date(), hour), 'ha')}
+<div className="w-20 py-4 pr-4 text-right text-sm text-muted-foreground font-medium sticky left-0 bg-background z-20">
+                  {formatTime(createHourDate(hour), settings)}
                 </div>
 
                 {/* Content area */}
@@ -433,7 +442,7 @@ return (
                           <div className="text-xs opacity-75 mt-1 truncate">{event.description}</div>
                         )}
                         <div className="text-xs opacity-75 mt-1">
-                          {format(new Date(event.startTime), 'h:mm a')} - {format(new Date(event.endTime), 'h:mm a')}
+                          {formatTime(new Date(event.startTime), settings)} - {formatTime(new Date(event.endTime), settings)}
                         </div>
                       </div>
                     </DraggableItem>

@@ -3,6 +3,7 @@ import { pgTable, text, timestamp, boolean, integer, uuid, jsonb, pgEnum } from 
 export const taskCategoryEnum = pgEnum('task_category', ['inbox', 'work', 'family', 'personal', 'travel']);
 export const taskPriorityEnum = pgEnum('task_priority', ['low', 'medium', 'high']);
 export const eventTypeEnum = pgEnum('event_type', ['meeting', 'appointment', 'reminder', 'deadline']);
+export const timeFormatEnum = pgEnum('time_format', ['12h', '24h']);
 
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -10,6 +11,8 @@ export const users = pgTable('users', {
   name: text('name'),
   image: text('image'),
   password: text('password'),
+  dateFormat: text('date_format').default('MMM d, yyyy'),
+  timeFormat: timeFormatEnum('time_format').default('12h'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });

@@ -136,20 +136,18 @@ export function UnifiedForm({ type: initialType = 'task', task, event, onSubmit,
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Type Selector */}
-          {!task && !event && (
-            <div>
-              <Label htmlFor="formType">Type</Label>
-              <Select value={formType} onValueChange={(value) => setFormType(value as FormType)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="task">Task</SelectItem>
-                  <SelectItem value="event">Event</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+          <div>
+            <Label htmlFor="formType">Type</Label>
+            <Select value={formType} onValueChange={(value) => setFormType(value as FormType)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="task">Task</SelectItem>
+                <SelectItem value="event">Event</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* Basic Info */}
           <div className="space-y-4">

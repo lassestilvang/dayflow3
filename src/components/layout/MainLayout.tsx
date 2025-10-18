@@ -26,8 +26,8 @@ export function MainLayout({ children }: MainLayoutProps) {
     setEditingEvent,
     setCreateDialogData
   } = useUIStore();
-  const { updateTask, addTask } = useTaskStore();
-  const { updateEvent, addEvent } = useEventStore();
+  const { updateTask, addTask, deleteTask } = useTaskStore();
+  const { updateEvent, addEvent, deleteEvent } = useEventStore();
   const [showUnifiedDialog, setShowUnifiedDialog] = useState(false);
   const [initialFormData, setInitialFormData] = useState<{ type: 'task' | 'event'; data: Partial<Task> | Partial<Event> } | null>(null);
 
@@ -53,18 +53,78 @@ export function MainLayout({ children }: MainLayoutProps) {
     }
   }, [createDialogData, setCreateDialogData, setShowUnifiedDialog, setInitialFormData]);
 
-  const handleUpdateTask = async (taskData: Partial<Task>) => {
-    if (!editingTask) return;
-    
-    await updateTask(editingTask.id, taskData);
-    setEditingTask(null);
-  };
+  
 
-  const handleUpdateEvent = async (eventData: Partial<Event>) => {
-    if (!editingEvent) return;
-    
-    await updateEvent(editingEvent.id, eventData as Partial<Event>);
-    setEditingEvent(null);
+  const handleUnifiedUpdate = async (data: Partial<Task> | Partial<Event>, type: 'task' | 'event') => {
+    try {
+      if (type === 'task') {
+        const taskData = data as Partial<Task>;
+        
+        // If we're editing an event but converting to task, delete the event and create a task
+        if (editingEvent) {
+          // Convert event to task
+          await addTask({
+            userId: 'user-1', // TODO: Get from auth context
+            title: taskData.title || editingEvent.title,
+            description: taskData.description || editingEvent.description,
+            category: taskData.category || 'inbox',
+            priority: taskData.priority || 'medium',
+            completed: false,
+            dueDate: taskData.dueDate,
+            scheduledDate: taskData.scheduledDate || editingEvent.startTime,
+            scheduledTime: taskData.scheduledTime,
+            allDay: taskData.allDay || editingEvent.allDay,
+            duration: taskData.duration,
+            subtasks: taskData.subtasks,
+          });
+          
+          // Delete the original event
+          await deleteEvent(editingEvent.id);
+          setEditingEvent(null);
+        } else if (editingTask) {
+          // Regular task update
+          await updateTask(editingTask.id, taskData);
+          setEditingTask(null);
+        }
+      } else {
+        const eventData = data as Partial<Event>;
+        
+        // If we're editing a task but converting to event, delete the task and create an event
+        if (editingTask) {
+          // Convert task to event
+          const startTime = eventData.startTime || (editingTask.scheduledDate ? new Date(editingTask.scheduledDate) : new Date());
+          let endTime = eventData.endTime || new Date();
+          
+          // If no end time provided, set it 1 hour after start time
+          if (!eventData.endTime) {
+            endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
+          }
+          
+          await addEvent({
+            userId: 'user-1', // TODO: Get from auth context
+            title: eventData.title || editingTask.title,
+            description: eventData.description || editingTask.description,
+            type: eventData.type || 'meeting',
+            startTime,
+            endTime,
+            allDay: eventData.allDay || editingTask.allDay,
+            location: eventData.location || '',
+            color: eventData.color || '#3b82f6',
+            attendees: eventData.attendees,
+          });
+          
+          // Delete the original task
+          await deleteTask(editingTask.id);
+          setEditingTask(null);
+        } else if (editingEvent) {
+          // Regular event update
+          await updateEvent(editingEvent.id, eventData as Partial<Event>);
+          setEditingEvent(null);
+        }
+      }
+    } catch (error) {
+      console.error('Error updating item:', error);
+    }
   };
 
   
@@ -110,27 +170,27 @@ export function MainLayout({ children }: MainLayoutProps) {
       sensors={sensors}
       collisionDetection={closestCenter}
     >
-      <div className="h-screen flex flex-col bg-background">
-        {/* Header */}
-        <Header />
-
-        {/* Main Content */}
-        <div className="flex-1 flex overflow-hidden">
-          {/* Sidebar */}
+      <div className="h-screen flex bg-background">
+        {/* Sidebar */}
+        <div className={cn(
+          'transition-all duration-300 ease-in-out',
+          sidebarOpen ? 'w-64' : 'w-0'
+        )}>
           <div className={cn(
-            'transition-all duration-300 ease-in-out',
-            sidebarOpen ? 'w-64' : 'w-0'
+            'h-full transition-all duration-300',
+            sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
           )}>
-            <div className={cn(
-              'h-full transition-all duration-300',
-              sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
-            )}>
-              <Sidebar />
-            </div>
+            <Sidebar />
           </div>
+        </div>
 
-          {/* Main Content Area */}
-          <main className="flex-1 flex flex-col overflow-hidden">
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Header */}
+          <Header />
+          
+          {/* Main Content */}
+          <main className="flex-1 overflow-auto">
             {children}
           </main>
         </div>
@@ -146,9 +206,7 @@ export function MainLayout({ children }: MainLayoutProps) {
             <UnifiedForm
               type="task"
               task={editingTask}
-              onSubmit={(data) => {
-                handleUpdateTask(data as Partial<Task>);
-              }}
+              onSubmit={handleUnifiedUpdate}
               onCancel={() => setEditingTask(null)}
             />
           )}
@@ -165,9 +223,7 @@ export function MainLayout({ children }: MainLayoutProps) {
             <UnifiedForm
               type="event"
               event={editingEvent}
-              onSubmit={(data) => {
-                handleUpdateEvent(data as Partial<Event>);
-              }}
+              onSubmit={handleUnifiedUpdate}
               onCancel={() => setEditingEvent(null)}
             />
           )}
