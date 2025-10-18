@@ -1,6 +1,8 @@
 'use client';
 
 import { ReactNode } from 'react';
+import { DndContext, 
+         closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { useUIStore } from '@/store';
@@ -13,31 +15,44 @@ interface MainLayoutProps {
 export function MainLayout({ children }: MainLayoutProps) {
   const { sidebarOpen } = useUIStore();
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
+
   return (
-    <div className="h-screen flex flex-col bg-background">
-      {/* Header */}
-      <Header />
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+    >
+      <div className="h-screen flex flex-col bg-background">
+        {/* Header */}
+        <Header />
 
-      {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar */}
-        <div className={cn(
-          'transition-all duration-300 ease-in-out',
-          sidebarOpen ? 'w-64' : 'w-0'
-        )}>
+        {/* Main Content */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Sidebar */}
           <div className={cn(
-            'h-full transition-all duration-300',
-            sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            'transition-all duration-300 ease-in-out',
+            sidebarOpen ? 'w-64' : 'w-0'
           )}>
-            <Sidebar />
+            <div className={cn(
+              'h-full transition-all duration-300',
+              sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            )}>
+              <Sidebar />
+            </div>
           </div>
-        </div>
 
-        {/* Main Content Area */}
-        <main className="flex-1 flex flex-col overflow-hidden">
-          {children}
-        </main>
+          {/* Main Content Area */}
+          <main className="flex-1 flex flex-col overflow-hidden">
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </DndContext>
   );
 }

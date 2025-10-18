@@ -112,9 +112,17 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       }
       
       const updatedTask = await response.json();
+      // Process the updated task to convert date strings to Date objects
+      const processedUpdatedTask = {
+        ...updatedTask,
+        dueDate: updatedTask.dueDate ? new Date(updatedTask.dueDate) : null,
+        scheduledDate: updatedTask.scheduledDate ? new Date(updatedTask.scheduledDate) : null,
+        createdAt: new Date(updatedTask.createdAt),
+        updatedAt: new Date(updatedTask.updatedAt),
+      };
       set((state) => ({
         tasks: state.tasks.map((task) =>
-          task.id === id ? updatedTask : task
+          task.id === id ? processedUpdatedTask : task
         ),
         isLoading: false,
       }));

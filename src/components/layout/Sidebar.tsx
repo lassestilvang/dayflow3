@@ -10,7 +10,8 @@ import {
   Settings,
   Plus,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  GripVertical
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,6 +21,7 @@ import { EventForm } from '@/components/events/EventForm';
 import { useTaskStore, useEventStore } from '@/store';
 import { Task, Event } from '@/types';
 import { cn } from '@/lib/utils';
+import { useDraggable } from '@dnd-kit/core';
 
 interface TaskCategory {
   id: string;
@@ -27,6 +29,40 @@ interface TaskCategory {
   icon: React.ReactNode;
   color: string;
   count: number;
+}
+
+interface DraggableTaskProps {
+  task: Task;
+  children: React.ReactNode;
+}
+
+function DraggableTask({ task, children }: DraggableTaskProps) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `sidebar-task-${task.id}`,
+    data: {
+      type: 'task',
+      data: task,
+      source: 'sidebar'
+    },
+  });
+
+  
+
+  const style = transform ? {
+    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+    opacity: isDragging ? 0.5 : 1,
+  } : undefined;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+    >
+      {children}
+    </div>
+  );
 }
 
 export function Sidebar() {
@@ -190,35 +226,44 @@ export function Sidebar() {
                 
                 {expandedCategories.includes(category.id) && (
                   <div className="ml-8 mt-1 space-y-1">
-                    {category.id === 'overdue' ? (
+{category.id === 'overdue' ? (
                       <div className="text-xs text-muted-foreground p-2">
                         {category.count === 0 ? 'No overdue tasks' : `${category.count} overdue task(s)`}
                       </div>
                     ) : (
                       getTasksByCategory(category.id).map((task) => (
-                        <div
-                          key={task.id}
-                          className="text-xs p-2 rounded hover:bg-accent cursor-pointer flex items-center gap-2"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={task.completed}
-                            onChange={() => {
-                              // This would need to be connected to the store
-                              // For now, just display
+                        <DraggableTask key={task.id} task={task}>
+                          <div
+                            className="text-xs p-2 rounded hover:bg-accent cursor-pointer flex items-center gap-2"
+                            onClick={(e) => {
+                              // Prevent drag when clicking checkbox
+                              if ((e.target as HTMLInputElement).type !== 'checkbox') {
+                                // Handle task click if needed
+                              }
                             }}
-                            className="rounded"
-                          />
-                          <span className={cn(
-                            'flex-1 truncate',
-                            task.completed && 'line-through text-muted-foreground'
-                          )}>
-                            {task.title}
-                          </span>
-                          {task.priority === 'high' && (
-                            <div className="w-2 h-2 rounded-full bg-red-500" />
-                          )}
-                        </div>
+                          >
+                            <GripVertical className="h-3 w-3 text-muted-foreground cursor-move" />
+                            <input
+                              type="checkbox"
+                              checked={task.completed}
+                              onChange={() => {
+                                // This would need to be connected to store
+                                // For now, just display
+                              }}
+                              className="rounded"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <span className={cn(
+                              'flex-1 truncate',
+                              task.completed && 'line-through text-muted-foreground'
+                            )}>
+                              {task.title}
+                            </span>
+                            {task.priority === 'high' && (
+                              <div className="w-2 h-2 rounded-full bg-red-500" />
+                            )}
+                          </div>
+                        </DraggableTask>
                       ))
                     )}
                     {category.id !== 'overdue' && category.count === 0 && (
