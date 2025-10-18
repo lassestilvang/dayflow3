@@ -7,6 +7,7 @@ import { useDraggable, useDroppable, useDndMonitor } from '@dnd-kit/core';
 import { useCalendarStore, useEventStore, useTaskStore, useUIStore } from '@/store';
 import { cn } from '@/lib/utils';
 import { Task, Event } from '@/types';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface DraggableItemProps {
   item: Task | Event;
@@ -85,6 +86,14 @@ export function MonthView() {
   const calendarDays = Array(adjustedStartDay).fill(null).concat(monthDays);
 
   const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  const handleTaskCompleteToggle = async (taskId: string, completed: boolean, e: React.MouseEvent) => {
+    e.stopPropagation();
+    await updateTask(taskId, { 
+      completed, 
+      updatedAt: new Date() 
+    });
+  };
 
   useDndMonitor({
     onDragStart: (event) => {
@@ -233,26 +242,33 @@ await updateTask(item.id, {
                     ))}
 
                     {/* Show first few tasks */}
-                    {tasks.slice(0, 2 - events.length).map((task) => (
-                      <DraggableItem key={task.id} item={task}>
-                        <div
-                          className={cn(
-                            'text-xs p-1 rounded truncate cursor-move hover:opacity-80',
-                            task.category === 'work' && 'bg-blue-100 text-blue-800',
-                            task.category === 'family' && 'bg-green-100 text-green-800',
-                            task.category === 'personal' && 'bg-orange-100 text-orange-800',
-                            task.category === 'travel' && 'bg-purple-100 text-purple-800',
-                            task.category === 'inbox' && 'bg-gray-100 text-gray-800'
-                          )}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingTask(task);
-                          }}
-                        >
-                          {task.title}
-                        </div>
-                      </DraggableItem>
-                    ))}
+{tasks.slice(0, 2 - events.length).map((task) => (
+                       <DraggableItem key={task.id} item={task}>
+                         <div
+                           className={cn(
+                             'text-xs p-1 rounded truncate cursor-move hover:opacity-80 flex items-center gap-1',
+                             task.category === 'work' && 'bg-blue-100 text-blue-800',
+                             task.category === 'family' && 'bg-green-100 text-green-800',
+                             task.category === 'personal' && 'bg-orange-100 text-orange-800',
+                             task.category === 'travel' && 'bg-purple-100 text-purple-800',
+                             task.category === 'inbox' && 'bg-gray-100 text-gray-800',
+                             task.completed && 'opacity-60 line-through'
+                           )}
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             setEditingTask(task);
+                           }}
+                         >
+                           <Checkbox
+                             checked={task.completed}
+                             onCheckedChange={(checked) => handleTaskCompleteToggle(task.id, checked as boolean, { stopPropagation: () => {} } as React.MouseEvent)}
+                             onClick={(e) => handleTaskCompleteToggle(task.id, !task.completed, e)}
+                             className="size-3"
+                           />
+                           {task.title}
+                         </div>
+                       </DraggableItem>
+                     ))}
 
                     {/* Show "more" indicator if there are more items */}
                     {events.length + tasks.length > 2 && (

@@ -7,6 +7,7 @@ import { useDraggable, useDroppable, useDndMonitor } from '@dnd-kit/core';
 import { useCalendarStore, useEventStore, useTaskStore, useUIStore } from '@/store';
 import { cn } from '@/lib/utils';
 import { Task, Event } from '@/types';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const HOUR_HEIGHT = 60; // pixels per hour
@@ -99,6 +100,14 @@ export function WeekView() {
   const [currentTime, setCurrentTime] = useState(new Date());
   
   const weekDates = getWeekDates();
+
+  const handleTaskCompleteToggle = async (taskId: string, completed: boolean, e: React.MouseEvent) => {
+    e.stopPropagation();
+    await updateTask(taskId, { 
+      completed, 
+      updatedAt: new Date() 
+    });
+  };
 
 // Update current time every minute
   useEffect(() => {
@@ -275,26 +284,33 @@ export function WeekView() {
                           </div>
                         </DraggableItem>
                       ))}
-                      {allDayTasks.map((task) => (
-                        <DraggableItem key={task.id} item={task}>
-                          <div
-                            className={cn(
-                              'text-xs p-1 rounded border cursor-move truncate hover:opacity-80',
-                              task.category === 'work' && 'bg-blue-100 text-blue-800 border-blue-200',
-                              task.category === 'family' && 'bg-green-100 text-green-800 border-green-200',
-                              task.category === 'personal' && 'bg-orange-100 text-orange-800 border-orange-200',
-                              task.category === 'travel' && 'bg-purple-100 text-purple-800 border-purple-200',
-                              task.category === 'inbox' && 'bg-gray-100 text-gray-800 border-gray-200'
-                            )}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingTask(task);
-                            }}
-                          >
-                            {task.title}
-                          </div>
-                        </DraggableItem>
-                      ))}
+{allDayTasks.map((task) => (
+                         <DraggableItem key={task.id} item={task}>
+                           <div
+                             className={cn(
+                               'text-xs p-1 rounded border cursor-move truncate hover:opacity-80 flex items-center gap-1',
+                               task.category === 'work' && 'bg-blue-100 text-blue-800 border-blue-200',
+                               task.category === 'family' && 'bg-green-100 text-green-800 border-green-200',
+                               task.category === 'personal' && 'bg-orange-100 text-orange-800 border-orange-200',
+                               task.category === 'travel' && 'bg-purple-100 text-purple-800 border-purple-200',
+                               task.category === 'inbox' && 'bg-gray-100 text-gray-800 border-gray-200',
+                               task.completed && 'opacity-60 line-through'
+                             )}
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               setEditingTask(task);
+                             }}
+                           >
+                             <Checkbox
+                               checked={task.completed}
+                               onCheckedChange={(checked) => handleTaskCompleteToggle(task.id, checked as boolean, { stopPropagation: () => {} } as React.MouseEvent)}
+                               onClick={(e) => handleTaskCompleteToggle(task.id, !task.completed, e)}
+                               className="size-3"
+                             />
+                             {task.title}
+                           </div>
+                         </DraggableItem>
+                       ))}
                       {allDayEvents.length === 0 && allDayTasks.length === 0 && (
                         <div className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
                           Drop here
@@ -383,26 +399,33 @@ export function WeekView() {
                                 </div>
                               </DraggableItem>
                             ))}
-                            {tasks.map((task) => (
-                              <DraggableItem key={task.id} item={task}>
-                                <div
-                                  className={cn(
-                                    'text-xs p-1 rounded border cursor-move truncate hover:opacity-80',
-                                    task.category === 'work' && 'bg-blue-100 text-blue-800 border-blue-200',
-                                    task.category === 'family' && 'bg-green-100 text-green-800 border-green-200',
-                                    task.category === 'personal' && 'bg-orange-100 text-orange-800 border-orange-200',
-                                    task.category === 'travel' && 'bg-purple-100 text-purple-800 border-purple-200',
-                                    task.category === 'inbox' && 'bg-gray-100 text-gray-800 border-gray-200'
-                                  )}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditingTask(task);
-                                  }}
-                                >
-                                  {task.title}
-                                </div>
-                              </DraggableItem>
-                            ))}
+{tasks.map((task) => (
+                               <DraggableItem key={task.id} item={task}>
+                                 <div
+                                   className={cn(
+                                     'text-xs p-1 rounded border cursor-move truncate hover:opacity-80 flex items-center gap-1',
+                                     task.category === 'work' && 'bg-blue-100 text-blue-800 border-blue-200',
+                                     task.category === 'family' && 'bg-green-100 text-green-800 border-green-200',
+                                     task.category === 'personal' && 'bg-orange-100 text-orange-800 border-orange-200',
+                                     task.category === 'travel' && 'bg-purple-100 text-purple-800 border-purple-200',
+                                     task.category === 'inbox' && 'bg-gray-100 text-gray-800 border-gray-200',
+                                     task.completed && 'opacity-60 line-through'
+                                   )}
+                                   onClick={(e) => {
+                                     e.stopPropagation();
+                                     setEditingTask(task);
+                                   }}
+                                 >
+                                   <Checkbox
+                                     checked={task.completed}
+                                     onCheckedChange={(checked) => handleTaskCompleteToggle(task.id, checked as boolean, { stopPropagation: () => {} } as React.MouseEvent)}
+                                     onClick={(e) => handleTaskCompleteToggle(task.id, !task.completed, e)}
+                                     className="size-3"
+                                   />
+                                   {task.title}
+                                 </div>
+                               </DraggableItem>
+                             ))}
                           </div>
                         </DroppableSlot>
                       );
