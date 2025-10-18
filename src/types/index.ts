@@ -6,6 +6,7 @@ export interface Task {
   category: 'inbox' | 'work' | 'family' | 'personal' | 'travel';
   priority: 'low' | 'medium' | 'high';
   completed: boolean;
+  completedAt?: Date;
   dueDate?: Date;
   scheduledDate?: Date;
   scheduledTime?: string;

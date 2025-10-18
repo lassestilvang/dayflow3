@@ -24,6 +24,7 @@ export async function GET() {
       ...task,
       dueDate: task.dueDate ? task.dueDate.toISOString() : null,
       scheduledDate: task.scheduledDate ? task.scheduledDate.toISOString() : null,
+      completedAt: task.completedAt ? task.completedAt.toISOString() : null,
       createdAt: task.createdAt?.toISOString() || new Date().toISOString(),
       updatedAt: task.updatedAt?.toISOString() || new Date().toISOString(),
     }));
@@ -54,6 +55,7 @@ export async function POST(request: NextRequest) {
       userId: session.user.id,
       dueDate: taskData.dueDate ? new Date(taskData.dueDate) : null,
       scheduledDate: taskData.scheduledDate ? new Date(taskData.scheduledDate) : null,
+      completedAt: taskData.completedAt ? new Date(taskData.completedAt) : null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -68,6 +70,7 @@ export async function POST(request: NextRequest) {
       ...task,
       dueDate: task.dueDate ? task.dueDate.toISOString() : null,
       scheduledDate: task.scheduledDate ? task.scheduledDate.toISOString() : null,
+      completedAt: task.completedAt ? task.completedAt.toISOString() : null,
       createdAt: task.createdAt?.toISOString() || new Date().toISOString(),
       updatedAt: task.updatedAt?.toISOString() || new Date().toISOString(),
     };

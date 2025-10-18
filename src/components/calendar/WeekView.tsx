@@ -105,6 +105,7 @@ export function WeekView() {
     e.stopPropagation();
     await updateTask(taskId, { 
       completed, 
+      completedAt: completed ? new Date() : undefined,
       updatedAt: new Date() 
     });
   };
@@ -285,7 +286,7 @@ export function WeekView() {
                         </DraggableItem>
                       ))}
 {allDayTasks.map((task) => (
-                         <DraggableItem key={task.id} item={task}>
+                         <DraggableItem key={`${task.id}-${task.completed ? 'completed' : 'incomplete'}`} item={task}>
                            <div
                              className={cn(
                                'text-xs p-1 rounded border cursor-move truncate hover:opacity-80 flex items-center gap-1',
@@ -400,7 +401,7 @@ export function WeekView() {
                               </DraggableItem>
                             ))}
 {tasks.map((task) => (
-                               <DraggableItem key={task.id} item={task}>
+                                <DraggableItem key={`${task.id}-${task.completed ? 'completed' : 'incomplete'}`} item={task}>
                                  <div
                                    className={cn(
                                      'text-xs p-1 rounded border cursor-move truncate hover:opacity-80 flex items-center gap-1',

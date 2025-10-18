@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { format, startOfDay } from 'date-fns';
 import { 
   Calendar, 
   CheckSquare, 
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { TaskForm } from '@/components/tasks/TaskForm';
 import { EventForm } from '@/components/events/EventForm';
@@ -70,11 +72,12 @@ export function Sidebar() {
   const [expandedCategories, setExpandedCategories] = useState<string[]>(['inbox', 'work']);
   const [showTaskDialog, setShowTaskDialog] = useState(false);
   const [showEventDialog, setShowEventDialog] = useState(false);
-  const { getTasksByCategory, getOverdueTasks, addTask } = useTaskStore();
+  const { getTasksByCategory, getOverdueTasks, addTask, updateTask } = useTaskStore();
   const { addEvent } = useEventStore();
   const { setEditingTask } = useUIStore();
   
-  const overdueCount = getOverdueTasks().length;
+  const overdueTasks = getOverdueTasks();
+  const overdueCount = overdueTasks.length;
   
   const categories: TaskCategory[] = [
     {
@@ -167,6 +170,49 @@ export function Sidebar() {
     setShowEventDialog(false);
   };
 
+  const handleTaskCompleteToggle = async (taskId: string, completed: boolean, e: React.MouseEvent) => {
+    e.stopPropagation();
+    await updateTask(taskId, { 
+      completed, 
+      completedAt: completed ? new Date() : undefined,
+      updatedAt: new Date() 
+    });
+  };
+
+  const getOverdueReason = (task: Task): string => {
+    const now = new Date();
+    
+    // Check due date first
+    if (task.dueDate && task.dueDate < now) {
+      return `Due ${format(task.dueDate, 'MMM d')}`;
+    }
+    
+    // Check scheduled time with duration
+    if (task.scheduledDate && task.scheduledTime) {
+      const scheduledDateTime = new Date(task.scheduledDate);
+      const [hours, minutes] = task.scheduledTime.split(':').map(Number);
+      scheduledDateTime.setHours(hours, minutes, 0, 0);
+      
+      if (task.duration) {
+        scheduledDateTime.setMinutes(scheduledDateTime.getMinutes() + task.duration);
+        return `Ended ${format(scheduledDateTime, 'MMM d, h:mm a')}`;
+      } else {
+        return `Scheduled ${format(scheduledDateTime, 'MMM d, h:mm a')}`;
+      }
+    }
+    
+    // Check all-day scheduled date
+    if (task.scheduledDate && !task.scheduledTime && task.allDay) {
+      const today = startOfDay(now);
+      const taskDate = startOfDay(task.scheduledDate);
+      if (taskDate < today) {
+        return `Scheduled ${format(taskDate, 'MMM d')}`;
+      }
+    }
+    
+    return 'Overdue';
+  };
+
   return (
     <div className="w-64 bg-background border-r border-border h-full flex flex-col">
       {/* Header */}
@@ -229,9 +275,49 @@ export function Sidebar() {
                 {expandedCategories.includes(category.id) && (
                   <div className="ml-8 mt-1 space-y-1">
 {category.id === 'overdue' ? (
-                      <div className="text-xs text-muted-foreground p-2">
-                        {category.count === 0 ? 'No overdue tasks' : `${category.count} overdue task(s)`}
-                      </div>
+                      <>
+                        {overdueTasks.length === 0 ? (
+                          <div className="text-xs text-muted-foreground p-2">
+                            No overdue tasks
+                          </div>
+                        ) : (
+                          overdueTasks.map((task) => (
+                            <DraggableTask key={`${task.id}-${task.completed ? 'completed' : 'incomplete'}`} task={task}>
+                              <div
+                                className="text-xs p-2 rounded hover:bg-accent cursor-pointer flex items-start gap-2"
+                                onClick={(e) => {
+                                  // Prevent drag when clicking checkbox
+                                  if ((e.target as HTMLInputElement).type !== 'checkbox') {
+                                    setEditingTask(task);
+                                  }
+                                }}
+                              >
+                                <GripVertical className="h-3 w-3 text-muted-foreground cursor-move mt-0.5 flex-shrink-0" />
+                                <Checkbox
+                                  checked={task.completed}
+                                  onCheckedChange={(checked) => handleTaskCompleteToggle(task.id, checked as boolean, { stopPropagation: () => {} } as React.MouseEvent)}
+                                  onClick={(e) => handleTaskCompleteToggle(task.id, !task.completed, e)}
+                                  className="size-3 mt-0.5 flex-shrink-0"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <div className={cn(
+                                    'truncate font-medium',
+                                    task.completed && 'line-through text-muted-foreground'
+                                  )}>
+                                    {task.title}
+                                  </div>
+                                  <div className="text-xs text-red-600 mt-0.5 truncate">
+                                    {getOverdueReason(task)}
+                                  </div>
+                                </div>
+                                {task.priority === 'high' && (
+                                  <div className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0 mt-0.5" />
+                                )}
+                              </div>
+                            </DraggableTask>
+                          ))
+                        )}
+                      </>
                     ) : (
                       getTasksByCategory(category.id).map((task) => (
                         <DraggableTask key={task.id} task={task}>
@@ -245,15 +331,11 @@ export function Sidebar() {
                             }}
                           >
                             <GripVertical className="h-3 w-3 text-muted-foreground cursor-move" />
-                            <input
-                              type="checkbox"
+                            <Checkbox
                               checked={task.completed}
-                              onChange={() => {
-                                // This would need to be connected to store
-                                // For now, just display
-                              }}
-                              className="rounded"
-                              onClick={(e) => e.stopPropagation()}
+                              onCheckedChange={(checked) => handleTaskCompleteToggle(task.id, checked as boolean, { stopPropagation: () => {} } as React.MouseEvent)}
+                              onClick={(e) => handleTaskCompleteToggle(task.id, !task.completed, e)}
+                              className="size-3"
                             />
                             <span className={cn(
                               'flex-1 truncate',

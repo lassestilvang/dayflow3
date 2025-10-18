@@ -126,6 +126,14 @@ export function TaskList({ tasks, title, onTaskClick, onTaskToggle, onTaskDelete
                         </div>
                       )}
 
+                      {/* Completion Time */}
+                      {task.completed && task.completedAt && (
+                        <div className="flex items-center gap-1 text-xs text-green-600">
+                          <CheckCircle2 className="h-3 w-3" />
+                          Completed {format(new Date(task.completedAt), 'MMM d, h:mm a')}
+                        </div>
+                      )}
+
                       {/* Duration */}
                       {task.duration && (
                         <div className="text-xs text-muted-foreground">

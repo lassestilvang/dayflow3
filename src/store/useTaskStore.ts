@@ -45,15 +45,17 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       }
       const tasks = await response.json();
       // Convert date strings back to Date objects
-      const processedTasks = tasks.map((task: Omit<Task, 'dueDate' | 'scheduledDate' | 'createdAt' | 'updatedAt'> & {
+      const processedTasks = tasks.map((task: Omit<Task, 'dueDate' | 'scheduledDate' | 'completedAt' | 'createdAt' | 'updatedAt'> & {
         dueDate?: string;
         scheduledDate?: string;
+        completedAt?: string;
         createdAt: string;
         updatedAt: string;
       }) => ({
         ...task,
         dueDate: task.dueDate ? new Date(task.dueDate) : undefined,
         scheduledDate: task.scheduledDate ? new Date(task.scheduledDate) : undefined,
+        completedAt: task.completedAt ? new Date(task.completedAt) : undefined,
         createdAt: new Date(task.createdAt),
         updatedAt: new Date(task.updatedAt),
       }));
@@ -117,6 +119,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
         ...updatedTask,
         dueDate: updatedTask.dueDate ? new Date(updatedTask.dueDate) : null,
         scheduledDate: updatedTask.scheduledDate ? new Date(updatedTask.scheduledDate) : null,
+        completedAt: updatedTask.completedAt ? new Date(updatedTask.completedAt) : null,
         createdAt: new Date(updatedTask.createdAt),
         updatedAt: new Date(updatedTask.updatedAt),
       };
@@ -232,9 +235,45 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   getOverdueTasks: () => {
     const { tasks } = get();
     const now = new Date();
-    return tasks.filter(
-      (task) => !task.completed && task.dueDate && task.dueDate < now
-    );
+    return tasks.filter((task) => {
+      if (task.completed) return false;
+      
+      // Check if task has a due date that's in the past
+      if (task.dueDate && task.dueDate < now) {
+        return true;
+      }
+      
+      // Check if task has a scheduled date and time that's in the past
+      if (task.scheduledDate && task.scheduledTime) {
+        const scheduledDateTime = new Date(task.scheduledDate);
+        const [hours, minutes] = task.scheduledTime.split(':').map(Number);
+        scheduledDateTime.setHours(hours, minutes, 0, 0);
+        
+        // If task has a duration, add it to the scheduled time
+        if (task.duration) {
+          scheduledDateTime.setMinutes(scheduledDateTime.getMinutes() + task.duration);
+        }
+        
+        // If the end time (scheduled + duration) is before now, it's overdue
+        if (scheduledDateTime < now) {
+          return true;
+        }
+      }
+      
+      // Check if task has a scheduled date (all-day) that's before today
+      if (task.scheduledDate && !task.scheduledTime && task.allDay) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const taskDate = new Date(task.scheduledDate);
+        taskDate.setHours(0, 0, 0, 0);
+        
+        if (taskDate < today) {
+          return true;
+        }
+      }
+      
+      return false;
+    });
   },
   
   getTasksForDate: (date) => {

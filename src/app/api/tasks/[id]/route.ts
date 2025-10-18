@@ -19,11 +19,25 @@ export async function PUT(
     const taskData = await request.json();
     const { id } = await params;
 
-    // Convert date strings to Date objects
+    // First get the existing task to preserve fields that aren't being updated
+    const existingTask = await db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.id, id), eq(tasks.userId, session.user.id)))
+      .limit(1);
+
+    if (existingTask.length === 0) {
+      return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+    }
+
+    const currentTask = existingTask[0];
+
+    // Convert date strings to Date objects, preserving existing values when not provided
     const processedData = {
       ...taskData,
-      dueDate: taskData.dueDate ? new Date(taskData.dueDate) : null,
-      scheduledDate: taskData.scheduledDate ? new Date(taskData.scheduledDate) : null,
+      dueDate: taskData.dueDate !== undefined ? (taskData.dueDate ? new Date(taskData.dueDate) : null) : currentTask.dueDate,
+      scheduledDate: taskData.scheduledDate !== undefined ? (taskData.scheduledDate ? new Date(taskData.scheduledDate) : null) : currentTask.scheduledDate,
+      completedAt: taskData.completedAt !== undefined ? (taskData.completedAt ? new Date(taskData.completedAt) : null) : currentTask.completedAt,
       updatedAt: new Date(),
     };
 
@@ -33,15 +47,12 @@ export async function PUT(
       .where(and(eq(tasks.id, id), eq(tasks.userId, session.user.id)))
       .returning();
 
-    if (updatedTask.length === 0) {
-      return NextResponse.json({ error: 'Task not found' }, { status: 404 });
-    }
-
     const task = updatedTask[0];
     const serializedTask = {
       ...task,
       dueDate: task.dueDate ? task.dueDate.toISOString() : null,
       scheduledDate: task.scheduledDate ? task.scheduledDate.toISOString() : null,
+      completedAt: task.completedAt ? task.completedAt.toISOString() : null,
       createdAt: task.createdAt?.toISOString() || new Date().toISOString(),
       updatedAt: task.updatedAt?.toISOString() || new Date().toISOString(),
     };

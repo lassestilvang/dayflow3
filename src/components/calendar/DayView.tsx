@@ -7,6 +7,7 @@ import { useDraggable, useDroppable, useDndMonitor } from '@dnd-kit/core';
 import { useCalendarStore, useEventStore, useTaskStore, useUIStore } from '@/store';
 import { cn } from '@/lib/utils';
 import { Task, Event } from '@/types';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const HOUR_HEIGHT = 80; // pixels per hour
@@ -225,6 +226,15 @@ export function DayView() {
     console.log('Create event at', currentDate, hour);
   };
 
+  const handleTaskCompleteToggle = async (taskId: string, completed: boolean, e: React.MouseEvent) => {
+    e.stopPropagation();
+    await updateTask(taskId, { 
+      completed, 
+      completedAt: completed ? new Date() : undefined,
+      updatedAt: new Date() 
+    });
+  };
+
 return (
     <>
       <div className="flex-1 overflow-auto bg-background relative">
@@ -261,7 +271,7 @@ return (
                   
                   {/* All-day tasks */}
                   {allDayTasks.map((task) => (
-                    <DraggableItem key={task.id} item={task}>
+                    <DraggableItem key={`${task.id}-${task.completed ? 'completed' : 'incomplete'}`} item={task}>
                       <div
                         onClick={(e) => {
                           e.stopPropagation();
@@ -277,15 +287,11 @@ return (
                         )}
                       >
                         <div className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
+                          <Checkbox
                             checked={task.completed}
-                            className="rounded"
-                            onClick={(e) => e.stopPropagation()}
-                            onChange={() => {
-                              // Toggle task completion
-                              console.log('Toggle task', task.id);
-                            }}
+                            onCheckedChange={(checked) => handleTaskCompleteToggle(task.id, checked as boolean, { stopPropagation: () => {} } as React.MouseEvent)}
+                            onClick={(e) => handleTaskCompleteToggle(task.id, !task.completed, e)}
+                            className="size-4"
                           />
                           <span className={cn(task.completed && 'line-through opacity-60')}>
                             {task.title}
@@ -380,7 +386,7 @@ return (
 
 {/* Tasks */}
                      {slotTasks.map((task) => (
-                       <DraggableItem key={task.id} item={task}>
+                       <DraggableItem key={`${task.id}-${task.completed ? 'completed' : 'incomplete'}`} item={task}>
                          <div
                            onClick={(e) => {
                              e.stopPropagation();
@@ -395,21 +401,17 @@ return (
                              task.category === 'inbox' && 'bg-gray-100 text-gray-800 border-gray-200'
                            )}
                          >
-                           <div className="flex items-center gap-2">
-                             <input
-                               type="checkbox"
-                               checked={task.completed}
-                               className="rounded"
-                               onClick={(e) => e.stopPropagation()}
-                               onChange={() => {
-                                 // Toggle task completion
-                                 console.log('Toggle task', task.id);
-                               }}
-                             />
-                             <span className={cn(task.completed && 'line-through opacity-60')}>
-                               {task.title}
-                             </span>
-                           </div>
+<div className="flex items-center gap-2">
+                              <Checkbox
+                                checked={task.completed}
+                                onCheckedChange={(checked) => handleTaskCompleteToggle(task.id, checked as boolean, { stopPropagation: () => {} } as React.MouseEvent)}
+                                onClick={(e) => handleTaskCompleteToggle(task.id, !task.completed, e)}
+                                className="size-4"
+                              />
+                              <span className={cn(task.completed && 'line-through opacity-60')}>
+                                {task.title}
+                              </span>
+                            </div>
                            {task.description && (
                              <div className="text-xs opacity-75 mt-1 ml-6">{task.description}</div>
                            )}

@@ -22,6 +22,7 @@ export const tasks = pgTable('tasks', {
   category: taskCategoryEnum('category').default('inbox'),
   priority: taskPriorityEnum('priority').default('medium'),
   completed: boolean('completed').default(false),
+  completedAt: timestamp('completed_at'), // when task was marked as completed
   dueDate: timestamp('due_date'),
   scheduledDate: timestamp('scheduled_date'),
   scheduledTime: text('scheduled_time'), // HH:MM format

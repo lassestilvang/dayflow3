@@ -91,6 +91,7 @@ export function MonthView() {
     e.stopPropagation();
     await updateTask(taskId, { 
       completed, 
+      completedAt: completed ? new Date() : undefined,
       updatedAt: new Date() 
     });
   };
@@ -243,7 +244,7 @@ await updateTask(item.id, {
 
                     {/* Show first few tasks */}
 {tasks.slice(0, 2 - events.length).map((task) => (
-                       <DraggableItem key={task.id} item={task}>
+                       <DraggableItem key={`${task.id}-${task.completed ? 'completed' : 'incomplete'}`} item={task}>
                          <div
                            className={cn(
                              'text-xs p-1 rounded truncate cursor-move hover:opacity-80 flex items-center gap-1',
