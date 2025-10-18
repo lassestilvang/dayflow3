@@ -1,6 +1,9 @@
 import { renderHook, act } from '@testing-library/react';
 import { useTaskStore, useEventStore, useCalendarStore } from '@/store';
 
+// Mock fetch
+const mockFetch = global.fetch as jest.Mock;
+
 // Mock tasks for testing
 const mockTasks = [
   {
@@ -27,6 +30,15 @@ const mockTasks = [
 
 describe('Task Store', () => {
   beforeEach(() => {
+    // Reset fetch mock
+    mockFetch.mockClear();
+    
+    // Mock fetch for loading tasks
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => [],
+    });
+    
     // Reset the store before each test
     const { result } = renderHook(() => useTaskStore());
     act(() => {
@@ -34,26 +46,44 @@ describe('Task Store', () => {
     });
   });
 
-  it('should add a task', () => {
+  it('should add a task', async () => {
     const { result } = renderHook(() => useTaskStore());
     
-    act(() => {
-      result.current.addTask(mockTasks[0]);
+    // Mock successful API response
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ ...mockTasks[0], id: '1' }),
+    });
+    
+    await act(async () => {
+      await result.current.addTask(mockTasks[0]);
     });
 
     expect(result.current.tasks).toHaveLength(1);
     expect(result.current.tasks[0].title).toBe('Test Task');
   });
 
-  it('should toggle task completion', () => {
+  it('should toggle task completion', async () => {
     const { result } = renderHook(() => useTaskStore());
     
-    act(() => {
-      result.current.addTask(mockTasks[0]);
+    // Mock add task
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ ...mockTasks[0], id: '1' }),
+    });
+    
+    await act(async () => {
+      await result.current.addTask(mockTasks[0]);
     });
 
-    act(() => {
-      result.current.toggleTaskComplete('1');
+    // Mock toggle task
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ ...mockTasks[0], id: '1', completed: true }),
+    });
+
+    await act(async () => {
+      await result.current.toggleTaskComplete('1');
     });
 
     expect(result.current.tasks[0].completed).toBe(true);
@@ -113,17 +143,32 @@ describe('Event Store', () => {
   ];
 
   beforeEach(() => {
+    // Reset fetch mock
+    mockFetch.mockClear();
+    
+    // Mock fetch for loading events
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => [],
+    });
+    
     const { result } = renderHook(() => useEventStore());
     act(() => {
       result.current.setEvents([]);
     });
   });
 
-  it('should add an event', () => {
+  it('should add an event', async () => {
     const { result } = renderHook(() => useEventStore());
     
-    act(() => {
-      result.current.addEvent(mockEvents[0]);
+    // Mock successful API response
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ ...mockEvents[0], id: '1' }),
+    });
+    
+    await act(async () => {
+      await result.current.addEvent(mockEvents[0]);
     });
 
     expect(result.current.events).toHaveLength(1);

@@ -8,10 +8,11 @@ interface EventStore {
   error: string | null;
   
   // Actions
+  fetchEvents: () => Promise<void>;
   setEvents: (events: Event[]) => void;
-  addEvent: (event: Event) => void;
-  updateEvent: (id: string, updates: Partial<Event>) => void;
-  deleteEvent: (id: string) => void;
+  addEvent: (event: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateEvent: (id: string, updates: Partial<Event>) => Promise<void>;
+  deleteEvent: (id: string) => Promise<void>;
   setSelectedEvent: (event: Event | null) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
@@ -29,20 +30,106 @@ export const useEventStore = create<EventStore>((set, get) => ({
   isLoading: false,
   error: null,
 
+  fetchEvents: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await fetch('/api/events');
+      if (!response.ok) {
+        throw new Error('Failed to fetch events');
+      }
+      const events = await response.json();
+      set({ events, isLoading: false });
+    } catch (error) {
+      set({ 
+        error: error instanceof Error ? error.message : 'Failed to fetch events',
+        isLoading: false 
+      });
+    }
+  },
+
   setEvents: (events) => set({ events }),
   
-  addEvent: (event) => set((state) => ({ events: [...state.events, event] })),
+  addEvent: async (eventData) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await fetch('/api/events', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(eventData),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to create event');
+      }
+      
+      const newEvent = await response.json();
+      set((state) => ({ 
+        events: [...state.events, newEvent],
+        isLoading: false 
+      }));
+    } catch (error) {
+      set({ 
+        error: error instanceof Error ? error.message : 'Failed to create event',
+        isLoading: false 
+      });
+    }
+  },
   
-  updateEvent: (id, updates) => set((state) => ({
-    events: state.events.map((event) =>
-      event.id === id ? { ...event, ...updates, updatedAt: new Date() } : event
-    ),
-  })),
+  updateEvent: async (id, updates) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await fetch(`/api/events/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updates),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update event');
+      }
+      
+      const updatedEvent = await response.json();
+      set((state) => ({
+        events: state.events.map((event) =>
+          event.id === id ? updatedEvent : event
+        ),
+        isLoading: false,
+      }));
+    } catch (error) {
+      set({ 
+        error: error instanceof Error ? error.message : 'Failed to update event',
+        isLoading: false 
+      });
+    }
+  },
   
-  deleteEvent: (id) => set((state) => ({
-    events: state.events.filter((event) => event.id !== id),
-    selectedEvent: state.selectedEvent?.id === id ? null : state.selectedEvent,
-  })),
+  deleteEvent: async (id) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await fetch(`/api/events/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete event');
+      }
+      
+      set((state) => ({
+        events: state.events.filter((event) => event.id !== id),
+        selectedEvent: state.selectedEvent?.id === id ? null : state.selectedEvent,
+        isLoading: false,
+      }));
+    } catch (error) {
+      set({ 
+        error: error instanceof Error ? error.message : 'Failed to delete event',
+        isLoading: false 
+      });
+    }
+  },
   
   setSelectedEvent: (event) => set({ selectedEvent: event }),
   

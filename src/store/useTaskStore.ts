@@ -8,16 +8,17 @@ interface TaskStore {
   error: string | null;
   
   // Actions
+  fetchTasks: () => Promise<void>;
   setTasks: (tasks: Task[]) => void;
-  addTask: (task: Task) => void;
-  updateTask: (id: string, updates: Partial<Task>) => void;
-  deleteTask: (id: string) => void;
-  toggleTaskComplete: (id: string) => void;
+  addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateTask: (id: string, updates: Partial<Task>) => Promise<void>;
+  deleteTask: (id: string) => Promise<void>;
+  toggleTaskComplete: (id: string) => Promise<void>;
   setSelectedTask: (task: Task | null) => void;
-  addSubtask: (taskId: string, subtask: Subtask) => void;
-  updateSubtask: (taskId: string, subtaskId: string, updates: Partial<Subtask>) => void;
-  deleteSubtask: (taskId: string, subtaskId: string) => void;
-  toggleSubtaskComplete: (taskId: string, subtaskId: string) => void;
+  addSubtask: (taskId: string, subtask: Subtask) => Promise<void>;
+  updateSubtask: (taskId: string, subtaskId: string, updates: Partial<Subtask>) => Promise<void>;
+  deleteSubtask: (taskId: string, subtaskId: string) => Promise<void>;
+  toggleSubtaskComplete: (taskId: string, subtaskId: string) => Promise<void>;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   
@@ -35,76 +36,182 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   isLoading: false,
   error: null,
 
+  fetchTasks: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await fetch('/api/tasks');
+      if (!response.ok) {
+        throw new Error('Failed to fetch tasks');
+      }
+      const tasks = await response.json();
+      // Convert date strings back to Date objects
+      const processedTasks = tasks.map((task: Omit<Task, 'dueDate' | 'scheduledDate' | 'createdAt' | 'updatedAt'> & {
+        dueDate?: string;
+        scheduledDate?: string;
+        createdAt: string;
+        updatedAt: string;
+      }) => ({
+        ...task,
+        dueDate: task.dueDate ? new Date(task.dueDate) : undefined,
+        scheduledDate: task.scheduledDate ? new Date(task.scheduledDate) : undefined,
+        createdAt: new Date(task.createdAt),
+        updatedAt: new Date(task.updatedAt),
+      }));
+      set({ tasks: processedTasks, isLoading: false });
+    } catch (error) {
+      set({ 
+        error: error instanceof Error ? error.message : 'Failed to fetch tasks',
+        isLoading: false 
+      });
+    }
+  },
+
   setTasks: (tasks) => set({ tasks }),
   
-  addTask: (task) => set((state) => ({ tasks: [...state.tasks, task] })),
+  addTask: async (taskData) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(taskData),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to create task');
+      }
+      
+      const newTask = await response.json();
+      set((state) => ({ 
+        tasks: [...state.tasks, newTask],
+        isLoading: false 
+      }));
+    } catch (error) {
+      set({ 
+        error: error instanceof Error ? error.message : 'Failed to create task',
+        isLoading: false 
+      });
+    }
+  },
   
-  updateTask: (id, updates) => set((state) => ({
-    tasks: state.tasks.map((task) =>
-      task.id === id ? { ...task, ...updates, updatedAt: new Date() } : task
-    ),
-  })),
+  updateTask: async (id, updates) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await fetch(`/api/tasks/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updates),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update task');
+      }
+      
+      const updatedTask = await response.json();
+      set((state) => ({
+        tasks: state.tasks.map((task) =>
+          task.id === id ? updatedTask : task
+        ),
+        isLoading: false,
+      }));
+    } catch (error) {
+      set({ 
+        error: error instanceof Error ? error.message : 'Failed to update task',
+        isLoading: false 
+      });
+    }
+  },
   
-  deleteTask: (id) => set((state) => ({
-    tasks: state.tasks.filter((task) => task.id !== id),
-    selectedTask: state.selectedTask?.id === id ? null : state.selectedTask,
-  })),
+  deleteTask: async (id) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await fetch(`/api/tasks/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete task');
+      }
+      
+      set((state) => ({
+        tasks: state.tasks.filter((task) => task.id !== id),
+        selectedTask: state.selectedTask?.id === id ? null : state.selectedTask,
+        isLoading: false,
+      }));
+    } catch (error) {
+      set({ 
+        error: error instanceof Error ? error.message : 'Failed to delete task',
+        isLoading: false 
+      });
+    }
+  },
   
-  toggleTaskComplete: (id) => set((state) => ({
-    tasks: state.tasks.map((task) =>
-      task.id === id ? { ...task, completed: !task.completed, updatedAt: new Date() } : task
-    ),
-  })),
+  toggleTaskComplete: async (id) => {
+    const { tasks } = get();
+    const task = tasks.find(t => t.id === id);
+    if (task) {
+      await get().updateTask(id, { 
+        completed: !task.completed,
+        updatedAt: new Date()
+      });
+    }
+  },
   
   setSelectedTask: (task) => set({ selectedTask: task }),
   
-  addSubtask: (taskId, subtask) => set((state) => ({
-    tasks: state.tasks.map((task) =>
-      task.id === taskId
-        ? { ...task, subtasks: [...(task.subtasks || []), subtask], updatedAt: new Date() }
-        : task
-    ),
-  })),
+  addSubtask: async (taskId, subtask) => {
+    const { tasks } = get();
+    const task = tasks.find(t => t.id === taskId);
+    if (task) {
+      await get().updateTask(taskId, {
+        subtasks: [...(task.subtasks || []), subtask],
+        updatedAt: new Date()
+      });
+    }
+  },
   
-  updateSubtask: (taskId, subtaskId, updates) => set((state) => ({
-    tasks: state.tasks.map((task) =>
-      task.id === taskId
-        ? {
-            ...task,
-            subtasks: task.subtasks?.map((st) =>
-              st.id === subtaskId ? { ...st, ...updates } : st
-            ),
-            updatedAt: new Date(),
-          }
-        : task
-    ),
-  })),
+  updateSubtask: async (taskId, subtaskId, updates) => {
+    const { tasks } = get();
+    const task = tasks.find(t => t.id === taskId);
+    if (task && task.subtasks) {
+      const updatedSubtasks = task.subtasks.map((st) =>
+        st.id === subtaskId ? { ...st, ...updates } : st
+      );
+      await get().updateTask(taskId, {
+        subtasks: updatedSubtasks,
+        updatedAt: new Date()
+      });
+    }
+  },
   
-  deleteSubtask: (taskId, subtaskId) => set((state) => ({
-    tasks: state.tasks.map((task) =>
-      task.id === taskId
-        ? {
-            ...task,
-            subtasks: task.subtasks?.filter((st) => st.id !== subtaskId),
-            updatedAt: new Date(),
-          }
-        : task
-    ),
-  })),
+  deleteSubtask: async (taskId, subtaskId) => {
+    const { tasks } = get();
+    const task = tasks.find(t => t.id === taskId);
+    if (task && task.subtasks) {
+      const updatedSubtasks = task.subtasks.filter((st) => st.id !== subtaskId);
+      await get().updateTask(taskId, {
+        subtasks: updatedSubtasks,
+        updatedAt: new Date()
+      });
+    }
+  },
   
-  toggleSubtaskComplete: (taskId, subtaskId) => set((state) => ({
-    tasks: state.tasks.map((task) =>
-      task.id === taskId
-        ? {
-            ...task,
-            subtasks: task.subtasks?.map((st) =>
-              st.id === subtaskId ? { ...st, completed: !st.completed } : st
-            ),
-            updatedAt: new Date(),
-          }
-        : task
-    ),
-  })),
+  toggleSubtaskComplete: async (taskId, subtaskId) => {
+    const { tasks } = get();
+    const task = tasks.find(t => t.id === taskId);
+    if (task && task.subtasks) {
+      const subtask = task.subtasks.find(st => st.id === subtaskId);
+      if (subtask) {
+        await get().updateSubtask(taskId, subtaskId, {
+          completed: !subtask.completed
+        });
+      }
+    }
+  },
   
   setLoading: (loading) => set({ isLoading: loading }),
   setError: (error) => set({ error }),

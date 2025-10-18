@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { 
   Calendar, 
   CheckSquare, 
@@ -29,6 +30,7 @@ interface TaskCategory {
 }
 
 export function Sidebar() {
+  const { data: session } = useSession();
   const [expandedCategories, setExpandedCategories] = useState<string[]>(['inbox', 'work']);
   const [showTaskDialog, setShowTaskDialog] = useState(false);
   const [showEventDialog, setShowEventDialog] = useState(false);
@@ -90,10 +92,11 @@ export function Sidebar() {
     );
   };
 
-  const handleCreateTask = (taskData: Partial<Task>) => {
-    const newTask: Task = {
-      id: Date.now().toString(),
-      userId: 'current-user', // This should come from auth context
+  const handleCreateTask = async (taskData: Partial<Task>) => {
+    if (!session?.user?.id) return;
+    
+    await addTask({
+      userId: session.user.id,
       title: taskData.title!,
       description: taskData.description,
       category: taskData.category || 'inbox',
@@ -104,18 +107,15 @@ export function Sidebar() {
       scheduledTime: taskData.scheduledTime,
       duration: taskData.duration,
       subtasks: taskData.subtasks,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    
-    addTask(newTask);
+    });
     setShowTaskDialog(false);
   };
 
-  const handleCreateEvent = (eventData: Partial<Event>) => {
-    const newEvent: Event = {
-      id: Date.now().toString(),
-      userId: 'current-user', // This should come from auth context
+  const handleCreateEvent = async (eventData: Partial<Event>) => {
+    if (!session?.user?.id) return;
+    
+    await addEvent({
+      userId: session.user.id,
       title: eventData.title!,
       description: eventData.description,
       type: eventData.type || 'meeting',
@@ -125,11 +125,7 @@ export function Sidebar() {
       location: eventData.location,
       attendees: eventData.attendees,
       color: eventData.color || '#3b82f6',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    
-    addEvent(newEvent);
+    });
     setShowEventDialog(false);
   };
 

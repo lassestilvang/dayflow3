@@ -5,12 +5,10 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Calendar as CalendarIcon,
-  LayoutGrid,
-  Calendar
+  LayoutGrid
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCalendarStore } from '@/store';
-import { cn } from '@/lib/utils';
 
 export function Header() {
   const { 

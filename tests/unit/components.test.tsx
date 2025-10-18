@@ -40,8 +40,8 @@ describe('TaskForm', () => {
 
     expect(screen.getByLabelText(/title/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/description/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/category/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/priority/i)).toBeInTheDocument();
+    expect(screen.getByText(/category/i)).toBeInTheDocument();
+    expect(screen.getByText(/priority/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /create task/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
   });
@@ -201,8 +201,8 @@ describe('TaskList', () => {
       />
     );
 
-    const taskCard = screen.getByText('Test Task').closest('.cursor-pointer');
-    fireEvent.click(taskCard!);
+    const taskContent = screen.getByText('Test Task').closest('.flex-1');
+    fireEvent.click(taskContent!);
 
     expect(mockOnTaskClick).toHaveBeenCalledWith(mockTasks[0]);
   });

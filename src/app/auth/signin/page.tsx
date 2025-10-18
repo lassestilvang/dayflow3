@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 import { SignInForm } from '@/components/auth/SignInForm';
+import { Suspense } from 'react';
 
 export default function SignInPage() {
   return (
@@ -15,7 +16,9 @@ export default function SignInPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <SignInForm />
+          <Suspense fallback={<div>Loading...</div>}>
+            <SignInForm />
+          </Suspense>
           
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
