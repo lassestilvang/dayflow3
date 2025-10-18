@@ -27,32 +27,48 @@ export const authConfig: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
+          console.log('Missing credentials');
           return null;
         }
 
-        const user = await db.select().from(users).where(eq(users.email, credentials.email)).limit(1);
-        
-        if (!user.length || !user[0].password) {
+        try {
+          const user = await db.select().from(users).where(eq(users.email, credentials.email)).limit(1);
+          
+          if (!user.length) {
+            console.log('User not found:', credentials.email);
+            return null;
+          }
+
+          if (!user[0].password) {
+            console.log('User has no password (OAuth user)');
+            return null;
+          }
+
+          const isPasswordValid = await bcrypt.compare(credentials.password, user[0].password);
+          
+          if (!isPasswordValid) {
+            console.log('Invalid password');
+            return null;
+          }
+
+          console.log('Authentication successful for:', user[0].email);
+
+          return {
+            id: user[0].id,
+            email: user[0].email,
+            name: user[0].name,
+            image: user[0].image,
+          };
+        } catch (error) {
+          console.error('Auth error:', error);
           return null;
         }
-
-        const isPasswordValid = await bcrypt.compare(credentials.password, user[0].password);
-        
-        if (!isPasswordValid) {
-          return null;
-        }
-
-        return {
-          id: user[0].id,
-          email: user[0].email,
-          name: user[0].name,
-          image: user[0].image,
-        };
       },
     }),
   ],
   pages: {
     signIn: '/auth/signin',
+    error: '/auth/signin',
   },
   callbacks: {
     session: async ({ session, token }) => {
@@ -71,4 +87,5 @@ export const authConfig: NextAuthOptions = {
   session: {
     strategy: 'jwt',
   },
+  debug: process.env.NODE_ENV === 'development',
 };
