@@ -38,7 +38,20 @@ export const useEventStore = create<EventStore>((set, get) => ({
         throw new Error('Failed to fetch events');
       }
       const events = await response.json();
-      set({ events, isLoading: false });
+      // Convert date strings back to Date objects
+      const processedEvents = events.map((event: Omit<Event, 'startTime' | 'endTime' | 'createdAt' | 'updatedAt'> & {
+        startTime: string;
+        endTime: string;
+        createdAt: string;
+        updatedAt: string;
+      }) => ({
+        ...event,
+        startTime: new Date(event.startTime),
+        endTime: new Date(event.endTime),
+        createdAt: new Date(event.createdAt),
+        updatedAt: new Date(event.updatedAt),
+      }));
+      set({ events: processedEvents, isLoading: false });
     } catch (error) {
       set({ 
         error: error instanceof Error ? error.message : 'Failed to fetch events',
@@ -65,8 +78,16 @@ export const useEventStore = create<EventStore>((set, get) => ({
       }
       
       const newEvent = await response.json();
+      // Process the new event to convert date strings to Date objects
+      const processedNewEvent = {
+        ...newEvent,
+        startTime: new Date(newEvent.startTime),
+        endTime: new Date(newEvent.endTime),
+        createdAt: new Date(newEvent.createdAt),
+        updatedAt: new Date(newEvent.updatedAt),
+      };
       set((state) => ({ 
-        events: [...state.events, newEvent],
+        events: [...state.events, processedNewEvent],
         isLoading: false 
       }));
     } catch (error) {
@@ -93,9 +114,17 @@ export const useEventStore = create<EventStore>((set, get) => ({
       }
       
       const updatedEvent = await response.json();
+      // Process the updated event to convert date strings to Date objects
+      const processedUpdatedEvent = {
+        ...updatedEvent,
+        startTime: new Date(updatedEvent.startTime),
+        endTime: new Date(updatedEvent.endTime),
+        createdAt: new Date(updatedEvent.createdAt),
+        updatedAt: new Date(updatedEvent.updatedAt),
+      };
       set((state) => ({
         events: state.events.map((event) =>
-          event.id === id ? updatedEvent : event
+          event.id === id ? processedUpdatedEvent : event
         ),
         isLoading: false,
       }));

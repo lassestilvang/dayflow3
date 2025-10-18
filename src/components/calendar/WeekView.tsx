@@ -94,12 +94,12 @@ export function WeekView() {
       const dropZoneId = over.id as string;
       
       if (draggedData && dropZoneId.includes('-hour-')) {
-        const [dateStr, , hourStr] = dropZoneId.split('-');
-        const hour = parseInt(hourStr);
+        const [datePart, hourPart] = dropZoneId.split('-hour-');
+        const hour = parseInt(hourPart);
         const item = draggedData.data as Task | Event;
         const fromSidebar = draggedData.source === 'sidebar';
         
-        const newDate = new Date(dateStr);
+        const newDate = new Date(datePart);
         
         if ('category' in item) {
           // It's a task

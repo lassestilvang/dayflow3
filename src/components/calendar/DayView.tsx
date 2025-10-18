@@ -99,14 +99,12 @@ export function DayView() {
         
         if ('category' in item) {
           // It's a task
-          // Create a new date explicitly to avoid any issues with currentDate
-          const newScheduledDate = new Date();
-          newScheduledDate.setFullYear(currentDate.getFullYear());
-          newScheduledDate.setMonth(currentDate.getMonth());
-          newScheduledDate.setDate(currentDate.getDate());
+          const newScheduledDate = new Date(currentDate);
           newScheduledDate.setHours(0, 0, 0, 0); // Reset time to midnight
           
           const newScheduledTime = `${hour.toString().padStart(2, '0')}:00`;
+          
+          
           
           try {
             await updateTask(item.id, {
@@ -137,6 +135,8 @@ export function DayView() {
             newStartTime.setHours(hour, 0, 0, 0);
             newEndTime = new Date(newStartTime.getTime() + duration);
           }
+          
+          
           
           await updateEvent(item.id, {
             startTime: newStartTime,
