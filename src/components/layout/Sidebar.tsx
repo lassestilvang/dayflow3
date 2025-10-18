@@ -2,8 +2,6 @@
 
 import { useState } from 'react';
 import { 
-  Menu, 
-  X, 
   Calendar, 
   CheckSquare, 
   Clock, 
@@ -15,7 +13,11 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useTaskStore } from '@/store';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { TaskForm } from '@/components/tasks/TaskForm';
+import { EventForm } from '@/components/events/EventForm';
+import { useTaskStore, useEventStore } from '@/store';
+import { Task, Event } from '@/types';
 import { cn } from '@/lib/utils';
 
 interface TaskCategory {
@@ -28,7 +30,10 @@ interface TaskCategory {
 
 export function Sidebar() {
   const [expandedCategories, setExpandedCategories] = useState<string[]>(['inbox', 'work']);
-  const { getTasksByCategory, getOverdueTasks } = useTaskStore();
+  const [showTaskDialog, setShowTaskDialog] = useState(false);
+  const [showEventDialog, setShowEventDialog] = useState(false);
+  const { getTasksByCategory, getOverdueTasks, addTask } = useTaskStore();
+  const { addEvent } = useEventStore();
   
   const overdueCount = getOverdueTasks().length;
   
@@ -85,6 +90,49 @@ export function Sidebar() {
     );
   };
 
+  const handleCreateTask = (taskData: Partial<Task>) => {
+    const newTask: Task = {
+      id: Date.now().toString(),
+      userId: 'current-user', // This should come from auth context
+      title: taskData.title!,
+      description: taskData.description,
+      category: taskData.category || 'inbox',
+      priority: taskData.priority || 'medium',
+      completed: false,
+      dueDate: taskData.dueDate,
+      scheduledDate: taskData.scheduledDate,
+      scheduledTime: taskData.scheduledTime,
+      duration: taskData.duration,
+      subtasks: taskData.subtasks,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    
+    addTask(newTask);
+    setShowTaskDialog(false);
+  };
+
+  const handleCreateEvent = (eventData: Partial<Event>) => {
+    const newEvent: Event = {
+      id: Date.now().toString(),
+      userId: 'current-user', // This should come from auth context
+      title: eventData.title!,
+      description: eventData.description,
+      type: eventData.type || 'meeting',
+      startTime: eventData.startTime!,
+      endTime: eventData.endTime!,
+      allDay: eventData.allDay || false,
+      location: eventData.location,
+      attendees: eventData.attendees,
+      color: eventData.color || '#3b82f6',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    
+    addEvent(newEvent);
+    setShowEventDialog(false);
+  };
+
   return (
     <div className="w-64 bg-background border-r border-border h-full flex flex-col">
       {/* Header */}
@@ -99,11 +147,19 @@ export function Sidebar() {
 
       {/* Quick Actions */}
       <div className="p-4 space-y-2">
-        <Button className="w-full justify-start" variant="default">
+        <Button 
+          className="w-full justify-start" 
+          variant="default"
+          onClick={() => setShowTaskDialog(true)}
+        >
           <Plus className="h-4 w-4 mr-2" />
           New Task
         </Button>
-        <Button className="w-full justify-start" variant="outline">
+        <Button 
+          className="w-full justify-start" 
+          variant="outline"
+          onClick={() => setShowEventDialog(true)}
+        >
           <Calendar className="h-4 w-4 mr-2" />
           New Event
         </Button>
@@ -138,10 +194,42 @@ export function Sidebar() {
                 
                 {expandedCategories.includes(category.id) && (
                   <div className="ml-8 mt-1 space-y-1">
-                    {/* Task items would go here */}
-                    <div className="text-xs text-muted-foreground p-2">
-                      {category.count === 0 ? 'No tasks' : `${category.count} task(s)`}
-                    </div>
+                    {category.id === 'overdue' ? (
+                      <div className="text-xs text-muted-foreground p-2">
+                        {category.count === 0 ? 'No overdue tasks' : `${category.count} overdue task(s)`}
+                      </div>
+                    ) : (
+                      getTasksByCategory(category.id).map((task) => (
+                        <div
+                          key={task.id}
+                          className="text-xs p-2 rounded hover:bg-accent cursor-pointer flex items-center gap-2"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={task.completed}
+                            onChange={() => {
+                              // This would need to be connected to the store
+                              // For now, just display
+                            }}
+                            className="rounded"
+                          />
+                          <span className={cn(
+                            'flex-1 truncate',
+                            task.completed && 'line-through text-muted-foreground'
+                          )}>
+                            {task.title}
+                          </span>
+                          {task.priority === 'high' && (
+                            <div className="w-2 h-2 rounded-full bg-red-500" />
+                          )}
+                        </div>
+                      ))
+                    )}
+                    {category.id !== 'overdue' && category.count === 0 && (
+                      <div className="text-xs text-muted-foreground p-2">
+                        No tasks
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -162,6 +250,32 @@ export function Sidebar() {
           </div>
         </div>
       </div>
+
+      {/* Task Creation Dialog */}
+      <Dialog open={showTaskDialog} onOpenChange={setShowTaskDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create New Task</DialogTitle>
+          </DialogHeader>
+          <TaskForm
+            onSubmit={handleCreateTask}
+            onCancel={() => setShowTaskDialog(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Event Creation Dialog */}
+      <Dialog open={showEventDialog} onOpenChange={setShowEventDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create New Event</DialogTitle>
+          </DialogHeader>
+          <EventForm
+            onSubmit={handleCreateEvent}
+            onCancel={() => setShowEventDialog(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

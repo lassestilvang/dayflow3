@@ -45,7 +45,7 @@ export interface Attendee {
   id: string;
   name: string;
   email: string;
-  status?: 'accepted' | 'declined' | 'tentative';
+  status?: 'pending' | 'accepted' | 'declined' | 'tentative';
 }
 
 export interface CalendarItem {

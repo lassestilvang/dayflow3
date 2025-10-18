@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { Calendar, Clock, Tag, AlertCircle } from 'lucide-react';
+import { Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -194,7 +194,7 @@ export function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
                 value={newSubtaskTitle}
                 onChange={(e) => setNewSubtaskTitle(e.target.value)}
                 placeholder="Add subtask"
-                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addSubtask())}
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addSubtask())}
               />
               <Button type="button" onClick={addSubtask} variant="outline">
                 Add
