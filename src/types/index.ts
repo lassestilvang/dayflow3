@@ -74,7 +74,7 @@ export interface Integration {
   accessToken?: string;
   refreshToken?: string;
   expiresAt?: Date;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;

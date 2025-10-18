@@ -119,9 +119,9 @@ export const useCalendarStore = create<CalendarStore>((set, get) => ({
   },
   
   getMonthDates: () => {
-    const { currentDate } = get();
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
+    const { currentDate: stateDate } = get();
+    const year = stateDate.getFullYear();
+    const month = stateDate.getMonth();
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     const dates = [];
@@ -132,7 +132,7 @@ export const useCalendarStore = create<CalendarStore>((set, get) => ({
     // End at the end of the week that contains the last day
     const endDate = endOfWeek(lastDay, { weekStartsOn: 1 });
     
-    let currentDate = new Date(startDate);
+    const currentDate = new Date(startDate);
     while (currentDate <= endDate) {
       dates.push(new Date(currentDate));
       currentDate.setDate(currentDate.getDate() + 1);

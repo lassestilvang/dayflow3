@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Task, Subtask } from '@/types';
+import { cn } from '@/lib/utils';
 
 interface TaskFormProps {
   task?: Task;
@@ -108,7 +109,7 @@ export function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="category">Category</Label>
-              <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value as any })}>
+              <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value as Task['category'] })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -124,7 +125,7 @@ export function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
 
             <div>
               <Label htmlFor="priority">Priority</Label>
-              <Select value={formData.priority} onValueChange={(value) => setFormData({ ...formData, priority: value as any })}>
+              <Select value={formData.priority} onValueChange={(value) => setFormData({ ...formData, priority: value as Task['priority'] })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

@@ -4,7 +4,6 @@ import { useEffect } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Calendar } from '@/components/calendar/Calendar';
 import { useTaskStore, useEventStore, useUIStore } from '@/store';
-import { auth } from '@/lib/auth';
 
 // Mock data for development
 const mockTasks = [

@@ -1,11 +1,9 @@
-import { auth } from '@/lib/auth';
+import { withAuth } from 'next-auth/middleware';
 
-export default auth((req) => {
-  // Redirect to sign in if not authenticated and trying to access protected routes
-  if (!req.auth && req.nextUrl.pathname.startsWith('/dashboard')) {
-    const newUrl = new URL('/auth/signin', req.nextUrl.origin);
-    return Response.redirect(newUrl);
-  }
+export default withAuth({
+  pages: {
+    signIn: '/auth/signin',
+  },
 });
 
 export const config = {

@@ -106,10 +106,9 @@ export function MonthView() {
                   ))}
 
                   {/* Show "more" indicator if there are more items */}
-                  const totalItems = events.length + tasks.length;
-                  {totalItems > 2 && (
+                  {events.length + tasks.length > 2 && (
                     <div className="text-xs text-muted-foreground">
-                      +{totalItems - 2} more
+                      +{events.length + tasks.length - 2} more
                     </div>
                   )}
                 </div>

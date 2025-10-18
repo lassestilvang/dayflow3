@@ -1,9 +1,10 @@
 'use client';
 
-import { format, addMinutes, isToday, setHours, setMinutes } from 'date-fns';
+import { format, isToday, setHours } from 'date-fns';
 import { useState } from 'react';
 import { useCalendarStore, useEventStore, useTaskStore } from '@/store';
 import { cn } from '@/lib/utils';
+import { Task, Event } from '@/types';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const HOUR_HEIGHT = 80; // pixels per hour
@@ -12,12 +13,12 @@ export function DayView() {
   const { currentDate } = useCalendarStore();
   const { getEventsForDate } = useEventStore();
   const { getTasksForDate } = useTaskStore();
-  const [draggedItem, setDraggedItem] = useState<any>(null);
+  const [draggedItem, setDraggedItem] = useState<Task | Event | null>(null);
 
   const events = getEventsForDate(currentDate);
   const tasks = getTasksForDate(currentDate);
 
-  const handleDragStart = (item: any) => {
+  const handleDragStart = (item: Task | Event) => {
     setDraggedItem(item);
   };
 

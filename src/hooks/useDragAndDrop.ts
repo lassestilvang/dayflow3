@@ -14,10 +14,10 @@ export function useDragAndDrop() {
   const [draggedItem, setDraggedItem] = useState<DragItem | null>(null);
 
   useDndMonitor({
-    onDragStart({ active }) => {
+    onDragStart: ({ active }) => {
       setDraggedItem(active.data.current as DragItem);
     },
-    onDragEnd() {
+    onDragEnd: () => {
       setDraggedItem(null);
     },
   });
