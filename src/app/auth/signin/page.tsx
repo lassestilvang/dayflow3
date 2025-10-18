@@ -1,38 +1,8 @@
 import { signIn } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import Link from 'next/link';
-import { Suspense } from 'react';
-
-function SignInForm() {
-  return (
-    <form
-      action={async (formData: FormData) => {
-        'use server';
-        await signIn('credentials', {
-          email: formData.get('email'),
-          password: formData.get('password'),
-          redirectTo: '/dashboard',
-        });
-      }}
-      className="space-y-4"
-    >
-      <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
-        <Input id="email" name="email" type="email" required />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
-        <Input id="password" name="password" type="password" required />
-      </div>
-      <Button type="submit" className="w-full">
-        Sign In
-      </Button>
-    </form>
-  );
-}
+import { SignInForm } from '@/components/auth/SignInForm';
 
 export default function SignInPage() {
   return (
@@ -45,9 +15,7 @@ export default function SignInPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <Suspense fallback={<div>Loading...</div>}>
-            <SignInForm />
-          </Suspense>
+          <SignInForm />
           
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
