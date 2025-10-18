@@ -12,6 +12,37 @@ import { Checkbox } from '@/components/ui/checkbox';
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const HOUR_HEIGHT = 60; // pixels per hour
 
+// Helper functions for duration calculations
+function getEventDuration(event: Event): number {
+  const start = new Date(event.startTime);
+  const end = new Date(event.endTime);
+  return (end.getTime() - start.getTime()) / (1000 * 60); // duration in minutes
+}
+
+function getTaskDuration(task: Task): number {
+  if (task.duration) {
+    return task.duration; // duration in minutes
+  }
+  return 30; // default 30 minutes for tasks without specified duration
+}
+
+function getEventTopPosition(event: Event): number {
+  const start = new Date(event.startTime);
+  return start.getHours() * HOUR_HEIGHT + start.getMinutes() * (HOUR_HEIGHT / 60);
+}
+
+function getTaskTopPosition(task: Task): number {
+  if (task.scheduledTime) {
+    const [hours, minutes] = task.scheduledTime.split(':').map(Number);
+    return hours * HOUR_HEIGHT + minutes * (HOUR_HEIGHT / 60);
+  }
+  return 0; // default to top if no time specified
+}
+
+function getItemHeight(duration: number): number {
+  return Math.max(duration * (HOUR_HEIGHT / 60), 30); // minimum 30px height for week view
+}
+
 interface DraggableItemProps {
   item: Task | Event;
   children: React.ReactNode;
@@ -37,10 +68,12 @@ function DraggableItem({ item, children }: DraggableItemProps) {
     <div
       ref={setNodeRef}
       style={style}
-      {...listeners}
       {...attributes}
+      className="h-full"
     >
-      {children}
+      <div {...listeners} className="h-full relative z-20">
+        {children}
+      </div>
     </div>
   );
 }
@@ -60,9 +93,10 @@ function DroppableSlot({ date, hour, children, onClick }: {
     <div
       ref={setNodeRef}
       className={cn(
-        'h-[60px] border-b border-border relative group hover:bg-accent/50 cursor-pointer',
+        'border-b border-border relative group hover:bg-accent/50 cursor-pointer',
         isOver && 'bg-accent/20'
       )}
+      style={{ height: `${HOUR_HEIGHT}px` }}
       onClick={onClick}
     >
       {children}
@@ -99,7 +133,7 @@ export function WeekView() {
   const { getWeekDates } = useCalendarStore();
   const { getEventsForDate, updateEvent } = useEventStore();
   const { getTasksForDate, updateTask } = useTaskStore();
-  const { setEditingTask, setEditingEvent, setShowCreateDialog, setCreateDialogData } = useUIStore();
+  const { setEditingTask, setEditingEvent, setCreateDialogData } = useUIStore();
   const [draggedItem, setDraggedItem] = useState<Task | Event | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   
@@ -281,7 +315,6 @@ export function WeekView() {
                         date,
                         allDay: true,
                       });
-                      setShowCreateDialog(true);
                     }}
                   >
                     <div className="space-y-1">
@@ -345,7 +378,8 @@ export function WeekView() {
               {HOURS.map((hour) => (
                 <div
                   key={hour}
-                  className="h-[60px] border-b border-border flex items-start justify-end pr-2 pt-1"
+                  className="border-b border-border flex items-start justify-end pr-2 pt-1"
+                  style={{ height: `${HOUR_HEIGHT}px` }}
                 >
                   <span className="text-xs text-muted-foreground font-medium">
                     {format(setHours(new Date(), hour), 'ha')}
@@ -379,86 +413,107 @@ export function WeekView() {
                     </div>
                   )}
 
-                  {/* Time slots */}
-                  <div className="relative">
-                    {HOURS.map((hour) => {
-                      const events = getEventsForDate(date).filter(event => {
-                        if (event.allDay) return false;
-                        const eventStart = new Date(event.startTime);
-                        return eventStart.getHours() === hour;
-                      });
-                      const tasks = getTasksForDate(date).filter(task => {
-                        if (task.allDay) return false;
-                        if (task.scheduledTime) {
-                          const [taskHour] = task.scheduledTime.split(':').map(Number);
-                          return taskHour === hour;
-                        }
-                        return false;
-                      });
+{/* Time slots with positioned events and tasks */}
+                   <div className="relative" style={{ minHeight: `${HOURS.length * HOUR_HEIGHT}px` }}>
+                     {/* Time slots for drop zones */}
+                     {HOURS.map((hour) => (
+                       <DroppableSlot 
+                         key={hour} 
+                         date={date} 
+                         hour={hour}
+                         onClick={() => {
+                           const time = `${hour.toString().padStart(2, '0')}:00`;
+                           setCreateDialogData({
+                             date,
+                             time,
+                             allDay: false,
+});
+                         }}
+                       >
+                         <div className="w-full h-full" />
+                       </DroppableSlot>
+                     ))}
 
-                      return (
-                        <DroppableSlot 
-                          key={hour} 
-                          date={date} 
-                          hour={hour}
-                          onClick={() => {
-                            const time = `${hour.toString().padStart(2, '0')}:00`;
-                            setCreateDialogData({
-                              date,
-                              time,
-                              allDay: false,
-                            });
-                            setShowCreateDialog(true);
-                          }}
-                        >
-                          {/* Events and Tasks */}
-                          <div className="absolute inset-0 p-1 space-y-1">
-                            {events.map((event) => (
-                              <DraggableItem key={event.id} item={event}>
-                                <div
-                                  className="text-xs p-1 rounded bg-blue-100 text-blue-800 border border-blue-200 cursor-move truncate hover:opacity-80"
-                                  style={{ backgroundColor: event.color + '20', borderColor: event.color }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditingEvent(event);
-                                  }}
-                                >
-                                  {event.title}
-                                </div>
-                              </DraggableItem>
-                            ))}
-{tasks.map((task) => (
-                                <DraggableItem key={`${task.id}-${task.completed ? 'completed' : 'incomplete'}`} item={task}>
-                                 <div
-                                   className={cn(
-                                     'text-xs p-1 rounded border cursor-move truncate hover:opacity-80 flex items-center gap-1',
-                                     task.category === 'work' && 'bg-blue-100 text-blue-800 border-blue-200',
-                                     task.category === 'family' && 'bg-green-100 text-green-800 border-green-200',
-                                     task.category === 'personal' && 'bg-orange-100 text-orange-800 border-orange-200',
-                                     task.category === 'travel' && 'bg-purple-100 text-purple-800 border-purple-200',
-                                     task.category === 'inbox' && 'bg-gray-100 text-gray-800 border-gray-200',
-                                     task.completed && 'opacity-60 line-through'
-                                   )}
-                                   onClick={(e) => {
-                                     e.stopPropagation();
-                                     setEditingTask(task);
-                                   }}
-                                 >
-                                   <Checkbox
-                                     checked={task.completed}
-                                     onCheckedChange={(checked) => handleTaskCompleteToggle(task.id, checked as boolean, { stopPropagation: () => {} } as React.MouseEvent)}
-                                     onClick={(e) => handleTaskCompleteToggle(task.id, !task.completed, e)}
-                                     className="size-3"
-                                   />
-                                   {task.title}
+                     {/* Positioned events for this date - rendered outside the hour slots */}
+                     <div className="absolute left-1 right-1 top-0 pointer-events-none z-10" style={{ height: `${HOURS.length * HOUR_HEIGHT}px` }}>
+                       {getEventsForDate(date).filter(event => !event.allDay).map((event) => {
+                         const top = getEventTopPosition(event);
+                         const height = getItemHeight(getEventDuration(event));
+                         
+return (
+                            <div
+                              key={event.id}
+                              className="absolute z-20 pointer-events-auto"
+                              style={{
+                                top: `${top}px`,
+                                height: `${height}px`,
+                                width: '100%',
+                              }}
+                           >
+                             <DraggableItem item={event}>
+                               <div
+                                 className="h-full text-xs p-1 rounded cursor-move truncate hover:opacity-80 overflow-hidden"
+                                 style={{ backgroundColor: event.color + '20', borderColor: event.color }}
+                                 onClick={(e) => {
+                                   e.stopPropagation();
+                                   setEditingEvent(event);
+                                 }}
+                               >
+                                 <div className="font-medium truncate">{event.title}</div>
+                                 <div className="opacity-75">
+                                   {format(new Date(event.startTime), 'h:mm')} - {format(new Date(event.endTime), 'h:mm')}
                                  </div>
-                               </DraggableItem>
-                             ))}
-                          </div>
-                        </DroppableSlot>
-                      );
-                    })}
-                  </div>
+                               </div>
+                             </DraggableItem>
+                           </div>
+                         );
+                       })}
+
+                       {/* Positioned tasks for this date - rendered outside the hour slots */}
+                       {getTasksForDate(date).filter(task => !task.allDay && task.scheduledTime).map((task) => {
+                         const top = getTaskTopPosition(task);
+                         const height = getItemHeight(getTaskDuration(task));
+                         
+                         return (
+                           <div
+                             key={`${task.id}-${task.completed ? 'completed' : 'incomplete'}`}
+                             className="absolute z-20 pointer-events-auto"
+                             style={{
+                               top: `${top}px`,
+                               height: `${height}px`,
+                               width: '100%',
+                             }}
+                           >
+                             <DraggableItem item={task}>
+                               <div
+                                 className={cn(
+                                   'h-full text-xs p-1 rounded border cursor-move truncate hover:opacity-80 overflow-hidden flex items-start gap-1',
+                                   task.category === 'work' && 'bg-blue-100 text-blue-800 border-blue-200',
+                                   task.category === 'family' && 'bg-green-100 text-green-800 border-green-200',
+                                   task.category === 'personal' && 'bg-orange-100 text-orange-800 border-orange-200',
+                                   task.category === 'travel' && 'bg-purple-100 text-purple-800 border-purple-200',
+                                   task.category === 'inbox' && 'bg-gray-100 text-gray-800 border-gray-200',
+                                   task.completed && 'opacity-60 line-through'
+                                 )}
+                                 onClick={(e) => {
+                                   e.stopPropagation();
+                                   setEditingTask(task);
+                                 }}
+                               >
+                                 <Checkbox
+                                   checked={task.completed}
+                                   onCheckedChange={(checked) => handleTaskCompleteToggle(task.id, checked as boolean, { stopPropagation: () => {} } as React.MouseEvent)}
+                                   onClick={(e) => handleTaskCompleteToggle(task.id, !task.completed, e)}
+                                   className="size-3 flex-shrink-0 mt-0.5"
+                                 />
+                                 <span className="truncate">{task.title}</span>
+                               </div>
+                             </DraggableItem>
+                           </div>
+                         );
+                       })}
+                     </div>
+                   </div>
                 </div>
               ))}
             </div>

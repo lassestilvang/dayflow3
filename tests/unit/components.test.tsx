@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { TaskForm } from '@/components/tasks/TaskForm';
+import { UnifiedForm } from '@/components/forms/UnifiedForm';
 import { TaskList } from '@/components/tasks/TaskList';
 import { Task } from '@/types';
 
@@ -27,13 +27,14 @@ const mockTasks: Task[] = [
   },
 ];
 
-describe('TaskForm', () => {
-  it('should render form fields', () => {
+describe('UnifiedForm', () => {
+  it('should render task form fields', () => {
     const mockOnSubmit = jest.fn();
     const mockOnCancel = jest.fn();
 
     render(
-      <TaskForm
+      <UnifiedForm
+        type="task"
         onSubmit={mockOnSubmit}
         onCancel={mockOnCancel}
       />
@@ -52,7 +53,8 @@ describe('TaskForm', () => {
     const mockOnCancel = jest.fn();
 
     render(
-      <TaskForm
+      <UnifiedForm
+        type="task"
         task={mockTasks[0]}
         onSubmit={mockOnSubmit}
         onCancel={mockOnCancel}
@@ -69,7 +71,8 @@ describe('TaskForm', () => {
     const mockOnCancel = jest.fn();
 
     render(
-      <TaskForm
+      <UnifiedForm
+        type="task"
         onSubmit={mockOnSubmit}
         onCancel={mockOnCancel}
       />
@@ -84,7 +87,8 @@ describe('TaskForm', () => {
     expect(mockOnSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
         title: 'New Task',
-      })
+      }),
+      'task'
     );
   });
 
@@ -93,7 +97,8 @@ describe('TaskForm', () => {
     const mockOnCancel = jest.fn();
 
     render(
-      <TaskForm
+      <UnifiedForm
+        type="task"
         onSubmit={mockOnSubmit}
         onCancel={mockOnCancel}
       />
@@ -110,7 +115,8 @@ describe('TaskForm', () => {
     const mockOnCancel = jest.fn();
 
     render(
-      <TaskForm
+      <UnifiedForm
+        type="task"
         onSubmit={mockOnSubmit}
         onCancel={mockOnCancel}
       />

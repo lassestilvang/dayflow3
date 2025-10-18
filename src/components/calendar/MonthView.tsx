@@ -73,7 +73,7 @@ export function MonthView() {
   const { currentDate } = useCalendarStore();
   const { getEventsForDate, updateEvent } = useEventStore();
   const { getTasksForDate, updateTask } = useTaskStore();
-  const { setEditingTask, setEditingEvent, setShowCreateDialog, setCreateDialogData } = useUIStore();
+  const { setEditingTask, setEditingEvent, setCreateDialogData } = useUIStore();
   const [draggedItem, setDraggedItem] = useState<Task | Event | null>(null);
 
   const monthStart = startOfMonth(currentDate);
@@ -177,7 +177,6 @@ await updateTask(item.id, {
       date,
       allDay: true,
     });
-    setShowCreateDialog(true);
   };
 
   return (

@@ -1,14 +1,13 @@
 'use client';
 
-import { ReactNode, useState } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import { DndContext, 
          closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { TaskForm } from '@/components/tasks/TaskForm';
-import { EventForm } from '@/components/events/EventForm';
-import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { UnifiedForm } from '@/components/forms/UnifiedForm';
+
 import { useUIStore, useTaskStore, useEventStore } from '@/store';
 import { cn } from '@/lib/utils';
 import { Task, Event } from '@/types';
@@ -22,19 +21,15 @@ export function MainLayout({ children }: MainLayoutProps) {
     sidebarOpen, 
     editingTask, 
     editingEvent, 
-    showCreateDialog,
     createDialogData,
     setEditingTask, 
     setEditingEvent,
-    setShowCreateDialog,
     setCreateDialogData
   } = useUIStore();
   const { updateTask, addTask } = useTaskStore();
   const { updateEvent, addEvent } = useEventStore();
-  const [showCreateTaskDialog, setShowCreateTaskDialog] = useState(false);
-  const [showCreateEventDialog, setShowCreateEventDialog] = useState(false);
-  const [initialTaskData, setInitialTaskData] = useState<Partial<Task> | null>(null);
-  const [initialEventData, setInitialEventData] = useState<Partial<Event> | null>(null);
+  const [showUnifiedDialog, setShowUnifiedDialog] = useState(false);
+  const [initialFormData, setInitialFormData] = useState<{ type: 'task' | 'event'; data: Partial<Task> | Partial<Event> } | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -43,6 +38,20 @@ export function MainLayout({ children }: MainLayoutProps) {
       },
     })
   );
+
+  // Auto-handle create dialog data by defaulting to task creation
+  useEffect(() => {
+    if (createDialogData) {
+      const taskData = {
+        scheduledDate: createDialogData.date,
+        scheduledTime: createDialogData.time,
+        allDay: createDialogData.allDay || false,
+      };
+      setInitialFormData({ type: 'task', data: taskData });
+      setCreateDialogData(null);
+      setShowUnifiedDialog(true);
+    }
+  }, [createDialogData, setCreateDialogData, setShowUnifiedDialog, setInitialFormData]);
 
   const handleUpdateTask = async (taskData: Partial<Task>) => {
     if (!editingTask) return;
@@ -58,75 +67,42 @@ export function MainLayout({ children }: MainLayoutProps) {
     setEditingEvent(null);
   };
 
-  const handleCreateChoice = (choice: 'task' | 'event') => {
-    if (!createDialogData) return;
+  
 
-    if (choice === 'task') {
-      const taskData = {
-        scheduledDate: createDialogData.date,
-        scheduledTime: createDialogData.time,
-        allDay: createDialogData.allDay || false,
-      };
-      setInitialTaskData(taskData);
-      setShowCreateTaskDialog(true);
+  const handleCreate = async (data: Partial<Task> | Partial<Event>, type: 'task' | 'event') => {
+    if (type === 'task') {
+      const taskData = data as Partial<Task>;
+      await addTask({
+        userId: 'user-1', // TODO: Get from auth context
+        title: taskData.title || '',
+        description: taskData.description || '',
+        category: taskData.category || 'inbox',
+        priority: taskData.priority || 'medium',
+        completed: false,
+        dueDate: taskData.dueDate,
+        scheduledDate: taskData.scheduledDate,
+        scheduledTime: taskData.scheduledTime,
+        allDay: taskData.allDay || false,
+        duration: taskData.duration,
+        subtasks: taskData.subtasks,
+      });
     } else {
-      const startTime = new Date(createDialogData.date);
-      if (createDialogData.time) {
-        const [hours, minutes] = createDialogData.time.split(':').map(Number);
-        startTime.setHours(hours, minutes, 0, 0);
-      } else {
-        startTime.setHours(9, 0, 0, 0); // Default 9 AM
-      }
-      
-      const endTime = new Date(startTime);
-      if (createDialogData.allDay) {
-        endTime.setHours(23, 59, 59, 999);
-      } else {
-        endTime.setHours(startTime.getHours() + 1); // Default 1 hour duration
-      }
-      
-      const eventData = {
-        startTime,
-        endTime,
-        allDay: createDialogData.allDay || false,
-      };
-      setInitialEventData(eventData);
-      setShowCreateEventDialog(true);
+      const eventData = data as Partial<Event>;
+      await addEvent({
+        userId: 'user-1', // TODO: Get from auth context
+        title: eventData.title || '',
+        description: eventData.description || '',
+        type: eventData.type || 'meeting',
+        startTime: eventData.startTime || new Date(),
+        endTime: eventData.endTime || new Date(),
+        allDay: eventData.allDay || false,
+        location: eventData.location || '',
+        color: eventData.color || '#3b82f6',
+        attendees: eventData.attendees,
+      });
     }
-    
-    setCreateDialogData(null);
-  };
-
-  const handleCreateTask = async (taskData: Partial<Task>) => {
-    await addTask({
-      userId: 'user-1', // TODO: Get from auth context
-      title: taskData.title || '',
-      description: taskData.description || '',
-      category: taskData.category || 'inbox',
-      priority: taskData.priority || 'medium',
-      completed: false,
-      dueDate: taskData.dueDate,
-      scheduledDate: taskData.scheduledDate,
-      scheduledTime: taskData.scheduledTime,
-      allDay: taskData.allDay || false,
-      duration: taskData.duration,
-      subtasks: taskData.subtasks,
-    });
-  };
-
-  const handleCreateEvent = async (eventData: Partial<Event>) => {
-    await addEvent({
-      userId: 'user-1', // TODO: Get from auth context
-      title: eventData.title || '',
-      description: eventData.description || '',
-      type: eventData.type || 'meeting',
-      startTime: eventData.startTime || new Date(),
-      endTime: eventData.endTime || new Date(),
-      allDay: eventData.allDay || false,
-      location: eventData.location || '',
-      color: eventData.color || '#3b82f6',
-      attendees: eventData.attendees,
-    });
+    setShowUnifiedDialog(false);
+    setInitialFormData(null);
   };
 
   return (
@@ -167,9 +143,12 @@ export function MainLayout({ children }: MainLayoutProps) {
             <DialogTitle>Edit Task</DialogTitle>
           </DialogHeader>
           {editingTask && (
-            <TaskForm
+            <UnifiedForm
+              type="task"
               task={editingTask}
-              onSubmit={handleUpdateTask}
+              onSubmit={(data) => {
+                handleUpdateTask(data as Partial<Task>);
+              }}
               onCancel={() => setEditingTask(null)}
             />
           )}
@@ -183,55 +162,40 @@ export function MainLayout({ children }: MainLayoutProps) {
             <DialogTitle>Edit Event</DialogTitle>
           </DialogHeader>
           {editingEvent && (
-            <EventForm
+            <UnifiedForm
+              type="event"
               event={editingEvent}
-              onSubmit={handleUpdateEvent}
+              onSubmit={(data) => {
+                handleUpdateEvent(data as Partial<Event>);
+              }}
               onCancel={() => setEditingEvent(null)}
             />
           )}
         </DialogContent>
       </Dialog>
 
-      {/* Create Choice Dialog */}
-      <ConfirmDialog
-        open={showCreateDialog}
-        onOpenChange={setShowCreateDialog}
-        title="Create Task or Event?"
-        description="What would you like to create?"
-        onConfirm={handleCreateChoice}
-      />
+      
 
-      {/* Task Create Dialog */}
-      <Dialog open={showCreateTaskDialog} onOpenChange={setShowCreateTaskDialog}>
+      {/* Unified Create Dialog */}
+      <Dialog open={showUnifiedDialog} onOpenChange={setShowUnifiedDialog}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>New Task</DialogTitle>
+            <DialogTitle>
+              {initialFormData?.type === 'task' ? 'New Task' : 'New Event'}
+            </DialogTitle>
           </DialogHeader>
-          <TaskForm
-            task={initialTaskData as Task}
-            onSubmit={handleCreateTask}
-            onCancel={() => {
-              setShowCreateTaskDialog(false);
-              setInitialTaskData(null);
-            }}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* Event Create Dialog */}
-      <Dialog open={showCreateEventDialog} onOpenChange={setShowCreateEventDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>New Event</DialogTitle>
-          </DialogHeader>
-          <EventForm
-            event={initialEventData as Event}
-            onSubmit={handleCreateEvent}
-            onCancel={() => {
-              setShowCreateEventDialog(false);
-              setInitialEventData(null);
-            }}
-          />
+          {initialFormData && (
+            <UnifiedForm
+              type={initialFormData.type}
+              task={initialFormData.type === 'task' ? initialFormData.data as Task : undefined}
+              event={initialFormData.type === 'event' ? initialFormData.data as Event : undefined}
+              onSubmit={handleCreate}
+              onCancel={() => {
+                setShowUnifiedDialog(false);
+                setInitialFormData(null);
+              }}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </DndContext>

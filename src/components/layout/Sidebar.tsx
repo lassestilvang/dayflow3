@@ -18,8 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { TaskForm } from '@/components/tasks/TaskForm';
-import { EventForm } from '@/components/events/EventForm';
+import { UnifiedForm } from '@/components/forms/UnifiedForm';
 import { useTaskStore, useEventStore, useUIStore } from '@/store';
 import { Task, Event } from '@/types';
 import { cn } from '@/lib/utils';
@@ -70,8 +69,8 @@ function DraggableTask({ task, children }: DraggableTaskProps) {
 export function Sidebar() {
   const { data: session } = useSession();
   const [expandedCategories, setExpandedCategories] = useState<string[]>(['inbox', 'work']);
-  const [showTaskDialog, setShowTaskDialog] = useState(false);
-  const [showEventDialog, setShowEventDialog] = useState(false);
+  const [showUnifiedDialog, setShowUnifiedDialog] = useState(false);
+  const [formType, setFormType] = useState<'task' | 'event'>('task');
   const { getTasksByCategory, getOverdueTasks, addTask, updateTask } = useTaskStore();
   const { addEvent } = useEventStore();
   const { setEditingTask } = useUIStore();
@@ -132,42 +131,41 @@ export function Sidebar() {
     );
   };
 
-  const handleCreateTask = async (taskData: Partial<Task>) => {
+  const handleCreate = async (data: Partial<Task> | Partial<Event>, type: 'task' | 'event') => {
     if (!session?.user?.id) return;
     
-    await addTask({
-      userId: session.user.id,
-      title: taskData.title!,
-      description: taskData.description,
-      category: taskData.category || 'inbox',
-      priority: taskData.priority || 'medium',
-      completed: false,
-      dueDate: taskData.dueDate,
-      scheduledDate: taskData.scheduledDate,
-      scheduledTime: taskData.scheduledTime,
-      allDay: taskData.allDay || false,
-      duration: taskData.duration,
-      subtasks: taskData.subtasks,
-    });
-    setShowTaskDialog(false);
-  };
-
-  const handleCreateEvent = async (eventData: Partial<Event>) => {
-    if (!session?.user?.id) return;
-    
-    await addEvent({
-      userId: session.user.id,
-      title: eventData.title!,
-      description: eventData.description,
-      type: eventData.type || 'meeting',
-      startTime: eventData.startTime!,
-      endTime: eventData.endTime!,
-      allDay: eventData.allDay || false,
-      location: eventData.location,
-      attendees: eventData.attendees,
-      color: eventData.color || '#3b82f6',
-    });
-    setShowEventDialog(false);
+    if (type === 'task') {
+      const taskData = data as Partial<Task>;
+      await addTask({
+        userId: session.user.id,
+        title: taskData.title!,
+        description: taskData.description,
+        category: taskData.category || 'inbox',
+        priority: taskData.priority || 'medium',
+        completed: false,
+        dueDate: taskData.dueDate,
+        scheduledDate: taskData.scheduledDate,
+        scheduledTime: taskData.scheduledTime,
+        allDay: taskData.allDay || false,
+        duration: taskData.duration,
+        subtasks: taskData.subtasks,
+      });
+    } else {
+      const eventData = data as Partial<Event>;
+      await addEvent({
+        userId: session.user.id,
+        title: eventData.title!,
+        description: eventData.description,
+        type: eventData.type || 'meeting',
+        startTime: eventData.startTime!,
+        endTime: eventData.endTime!,
+        allDay: eventData.allDay || false,
+        location: eventData.location,
+        attendees: eventData.attendees,
+        color: eventData.color || '#3b82f6',
+      });
+    }
+    setShowUnifiedDialog(false);
   };
 
   const handleTaskCompleteToggle = async (taskId: string, completed: boolean, e: React.MouseEvent) => {
@@ -230,7 +228,10 @@ export function Sidebar() {
         <Button 
           className="w-full justify-start" 
           variant="default"
-          onClick={() => setShowTaskDialog(true)}
+          onClick={() => {
+            setFormType('task');
+            setShowUnifiedDialog(true);
+          }}
         >
           <Plus className="h-4 w-4 mr-2" />
           New Task
@@ -238,7 +239,10 @@ export function Sidebar() {
         <Button 
           className="w-full justify-start" 
           variant="outline"
-          onClick={() => setShowEventDialog(true)}
+          onClick={() => {
+            setFormType('event');
+            setShowUnifiedDialog(true);
+          }}
         >
           <Calendar className="h-4 w-4 mr-2" />
           New Event
@@ -376,28 +380,18 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Task Creation Dialog */}
-      <Dialog open={showTaskDialog} onOpenChange={setShowTaskDialog}>
+      {/* Unified Creation Dialog */}
+      <Dialog open={showUnifiedDialog} onOpenChange={setShowUnifiedDialog}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Create New Task</DialogTitle>
+            <DialogTitle>
+              {formType === 'task' ? 'Create New Task' : 'Create New Event'}
+            </DialogTitle>
           </DialogHeader>
-          <TaskForm
-            onSubmit={handleCreateTask}
-            onCancel={() => setShowTaskDialog(false)}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* Event Creation Dialog */}
-      <Dialog open={showEventDialog} onOpenChange={setShowEventDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Create New Event</DialogTitle>
-          </DialogHeader>
-          <EventForm
-            onSubmit={handleCreateEvent}
-            onCancel={() => setShowEventDialog(false)}
+          <UnifiedForm
+            type={formType}
+            onSubmit={handleCreate}
+            onCancel={() => setShowUnifiedDialog(false)}
           />
         </DialogContent>
       </Dialog>
