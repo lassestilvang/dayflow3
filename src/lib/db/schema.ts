@@ -25,6 +25,7 @@ export const tasks = pgTable('tasks', {
   dueDate: timestamp('due_date'),
   scheduledDate: timestamp('scheduled_date'),
   scheduledTime: text('scheduled_time'), // HH:MM format
+  allDay: boolean('all_day').default(false),
   duration: integer('duration'), // in minutes
   subtasks: jsonb('subtasks'), // array of subtask objects
   externalId: text('external_id'), // for integrations

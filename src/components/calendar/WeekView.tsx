@@ -1,14 +1,15 @@
 'use client';
 
 import { format, isToday, setHours } from 'date-fns';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DragOverlay } from '@dnd-kit/core';
 import { useDraggable, useDroppable, useDndMonitor } from '@dnd-kit/core';
-import { useCalendarStore, useEventStore, useTaskStore } from '@/store';
+import { useCalendarStore, useEventStore, useTaskStore, useUIStore } from '@/store';
 import { cn } from '@/lib/utils';
 import { Task, Event } from '@/types';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
+const HOUR_HEIGHT = 60; // pixels per hour
 
 interface DraggableItemProps {
   item: Task | Event;
@@ -66,13 +67,50 @@ function DroppableSlot({ date, hour, children }: {
   );
 }
 
+function DroppableAllDaySlot({ date, children }: { 
+  date: Date; 
+  children: React.ReactNode;
+}) {
+  const slotId = `${format(date, 'yyyy-MM-dd')}-all-day`;
+  const { isOver, setNodeRef } = useDroppable({
+    id: slotId,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        'flex-1 min-w-[120px] border-r border-border last:border-r-0 p-1 min-h-[60px] relative',
+        isToday(date) && 'bg-blue-50/50 border-l-2 border-l-blue-200',
+        isOver && 'bg-accent/20'
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
 export function WeekView() {
   const { getWeekDates } = useCalendarStore();
   const { getEventsForDate, updateEvent } = useEventStore();
   const { getTasksForDate, updateTask } = useTaskStore();
+  const { setEditingTask, setEditingEvent } = useUIStore();
   const [draggedItem, setDraggedItem] = useState<Task | Event | null>(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
   
   const weekDates = getWeekDates();
+
+// Update current time every minute
+  useEffect(() => {
+    const now = new Date();
+    setCurrentTime(now);
+    
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, []);
 
   useDndMonitor({
     onDragStart: (event) => {
@@ -93,49 +131,81 @@ export function WeekView() {
       const draggedData = active.data.current as { type: 'task' | 'event'; data: Task | Event; source?: string } | undefined;
       const dropZoneId = over.id as string;
       
-      if (draggedData && dropZoneId.includes('-hour-')) {
-        const [datePart, hourPart] = dropZoneId.split('-hour-');
-        const hour = parseInt(hourPart);
+      if (draggedData) {
         const item = draggedData.data as Task | Event;
         const fromSidebar = draggedData.source === 'sidebar';
         
-        const newDate = new Date(datePart);
-        
-        if ('category' in item) {
-          // It's a task
-          const newScheduledTime = `${hour.toString().padStart(2, '0')}:00`;
+        if (dropZoneId.includes('-all-day')) {
+          // Handle dropping in all-day section
+          const datePart = dropZoneId.replace('-all-day', '');
+          const newDate = new Date(datePart);
           
-          await updateTask(item.id, {
-            scheduledDate: newDate,
-            scheduledTime: newScheduledTime,
-            updatedAt: new Date()
-          });
-        } else {
-          // It's an event
-          let newStartTime: Date;
-          let newEndTime: Date;
-          
-          if (fromSidebar) {
-            // Event from sidebar (unlikely but handle it)
-            newStartTime = new Date(newDate);
-            newStartTime.setHours(hour, 0, 0, 0);
-            newEndTime = new Date(newStartTime.getTime() + 60 * 60 * 1000); // Default 1 hour
+          if ('category' in item) {
+            // It's a task - make it all-day
+            await updateTask(item.id, {
+              scheduledDate: newDate,
+              scheduledTime: undefined,
+              allDay: true,
+              updatedAt: new Date()
+            });
           } else {
-            // Existing event being rescheduled
-            const originalStart = new Date(item.startTime);
-            const originalEnd = new Date(item.endTime);
-            const duration = originalEnd.getTime() - originalStart.getTime();
+            // It's an event - make it all-day
+            const newStartTime = new Date(newDate);
+            newStartTime.setHours(0, 0, 0, 0);
+            const newEndTime = new Date(newDate);
+            newEndTime.setHours(23, 59, 59, 999);
             
-            newStartTime = new Date(newDate);
-            newStartTime.setHours(hour, 0, 0, 0);
-            newEndTime = new Date(newStartTime.getTime() + duration);
+            await updateEvent(item.id, {
+              startTime: newStartTime,
+              endTime: newEndTime,
+              allDay: true,
+              updatedAt: new Date()
+            });
           }
+        } else if (dropZoneId.includes('-hour-')) {
+          // Handle dropping in specific hour
+          const [datePart, hourPart] = dropZoneId.split('-hour-');
+          const hour = parseInt(hourPart);
+          const newDate = new Date(datePart);
           
-          await updateEvent(item.id, {
-            startTime: newStartTime,
-            endTime: newEndTime,
-            updatedAt: new Date()
-          });
+          if ('category' in item) {
+            // It's a task
+            const newScheduledTime = `${hour.toString().padStart(2, '0')}:00`;
+            
+            await updateTask(item.id, {
+              scheduledDate: newDate,
+              scheduledTime: newScheduledTime,
+              allDay: false,
+              updatedAt: new Date()
+            });
+          } else {
+            // It's an event
+            let newStartTime: Date;
+            let newEndTime: Date;
+            
+            if (fromSidebar) {
+              // Event from sidebar (unlikely but handle it)
+              newStartTime = new Date(newDate);
+              newStartTime.setHours(hour, 0, 0, 0);
+              newEndTime = new Date(newStartTime.getTime() + 60 * 60 * 1000); // Default 1 hour
+            } else {
+              // Existing event being rescheduled
+              const originalStart = new Date(item.startTime);
+              const originalEnd = new Date(item.endTime);
+              const duration = originalEnd.getTime() - originalStart.getTime();
+              
+              newStartTime = new Date(newDate);
+              newStartTime.setHours(hour, 0, 0, 0);
+              newEndTime = new Date(newStartTime.getTime() + duration);
+            }
+            
+            await updateEvent(item.id, {
+              startTime: newStartTime,
+              endTime: newEndTime,
+              allDay: false,
+              updatedAt: new Date()
+            });
+          }
         }
       }
       
@@ -158,7 +228,7 @@ export function WeekView() {
                 key={dateIndex}
                 className={cn(
                   'flex-1 min-w-[120px] border-r border-border last:border-r-0 border-b border-border',
-                  isToday(date) && 'bg-blue-50/50'
+                  isToday(date) && 'bg-blue-50/50 border-l-2 border-l-blue-500'
                 )}
               >
                 <div className="sticky top-0 z-10 bg-background p-2 text-center">
@@ -167,13 +237,74 @@ export function WeekView() {
                   </div>
                   <div className={cn(
                     'text-sm font-semibold',
-                    isToday(date) && 'text-blue-600'
+                    isToday(date) && 'text-blue-600 bg-blue-100 rounded-full w-7 h-7 flex items-center justify-center mx-auto'
                   )}>
                     {format(date, 'd')}
                   </div>
                 </div>
               </div>
             ))}
+          </div>
+
+          
+
+          {/* All-day section */}
+          <div className="flex border-b border-border bg-muted/30">
+            <div className="sticky left-0 z-20 w-20 bg-background border-r border-border flex items-start justify-end pr-2 pt-1">
+              <span className="text-xs text-muted-foreground font-medium">All day</span>
+            </div>
+            <div className="flex flex-1">
+              {weekDates.map((date, dateIndex) => {
+                const allDayEvents = getEventsForDate(date).filter(event => event.allDay);
+                const allDayTasks = getTasksForDate(date).filter(task => task.allDay);
+                
+                return (
+                  <DroppableAllDaySlot key={dateIndex} date={date}>
+                    <div className="space-y-1">
+                      {allDayEvents.map((event) => (
+                        <DraggableItem key={event.id} item={event}>
+                          <div
+                            className="text-xs p-1 rounded cursor-move truncate hover:opacity-80"
+                            style={{ backgroundColor: event.color + '20', borderColor: event.color }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingEvent(event);
+                            }}
+                          >
+                            {event.title}
+                          </div>
+                        </DraggableItem>
+                      ))}
+                      {allDayTasks.map((task) => (
+                        <DraggableItem key={task.id} item={task}>
+                          <div
+                            className={cn(
+                              'text-xs p-1 rounded border cursor-move truncate hover:opacity-80',
+                              task.category === 'work' && 'bg-blue-100 text-blue-800 border-blue-200',
+                              task.category === 'family' && 'bg-green-100 text-green-800 border-green-200',
+                              task.category === 'personal' && 'bg-orange-100 text-orange-800 border-orange-200',
+                              task.category === 'travel' && 'bg-purple-100 text-purple-800 border-purple-200',
+                              task.category === 'inbox' && 'bg-gray-100 text-gray-800 border-gray-200'
+                            )}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingTask(task);
+                            }}
+                          >
+                            {task.title}
+                          </div>
+                        </DraggableItem>
+                      ))}
+                      {allDayEvents.length === 0 && allDayTasks.length === 0 && (
+                        <div className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                          Drop here
+                        </div>
+                      )}
+                    </div>
+                  </DroppableAllDaySlot>
+                );
+              })}
+            </div>
           </div>
 
           {/* Time slots grid */}
@@ -198,18 +329,35 @@ export function WeekView() {
                 <div
                   key={dateIndex}
                   className={cn(
-                    'flex-1 min-w-[120px] border-r border-border last:border-r-0',
-                    isToday(date) && 'bg-blue-50/50'
+                    'flex-1 min-w-[120px] border-r border-border last:border-r-0 relative',
+                    isToday(date) && 'bg-blue-50/50 border-l-2 border-l-blue-200'
                   )}
                 >
+                  {/* Current time indicator for today */}
+                  {isToday(date) && (
+                    <div 
+                      className="absolute left-0 right-0 z-10 pointer-events-none"
+                      style={{
+                        top: `${currentTime.getHours() * HOUR_HEIGHT + currentTime.getMinutes() * (HOUR_HEIGHT / 60)}px`,
+                      }}
+                    >
+                      <div className="flex items-center">
+                        <div className="w-2 h-2 bg-red-500 rounded-full -ml-1"></div>
+                        <div className="flex-1 h-0.5 bg-red-500"></div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Time slots */}
                   <div className="relative">
                     {HOURS.map((hour) => {
                       const events = getEventsForDate(date).filter(event => {
+                        if (event.allDay) return false;
                         const eventStart = new Date(event.startTime);
                         return eventStart.getHours() === hour;
                       });
                       const tasks = getTasksForDate(date).filter(task => {
+                        if (task.allDay) return false;
                         if (task.scheduledTime) {
                           const [taskHour] = task.scheduledTime.split(':').map(Number);
                           return taskHour === hour;
@@ -224,8 +372,12 @@ export function WeekView() {
                             {events.map((event) => (
                               <DraggableItem key={event.id} item={event}>
                                 <div
-                                  className="text-xs p-1 rounded bg-blue-100 text-blue-800 border border-blue-200 cursor-move truncate"
+                                  className="text-xs p-1 rounded bg-blue-100 text-blue-800 border border-blue-200 cursor-move truncate hover:opacity-80"
                                   style={{ backgroundColor: event.color + '20', borderColor: event.color }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingEvent(event);
+                                  }}
                                 >
                                   {event.title}
                                 </div>
@@ -235,13 +387,17 @@ export function WeekView() {
                               <DraggableItem key={task.id} item={task}>
                                 <div
                                   className={cn(
-                                    'text-xs p-1 rounded border cursor-move truncate',
+                                    'text-xs p-1 rounded border cursor-move truncate hover:opacity-80',
                                     task.category === 'work' && 'bg-blue-100 text-blue-800 border-blue-200',
                                     task.category === 'family' && 'bg-green-100 text-green-800 border-green-200',
                                     task.category === 'personal' && 'bg-orange-100 text-orange-800 border-orange-200',
                                     task.category === 'travel' && 'bg-purple-100 text-purple-800 border-purple-200',
                                     task.category === 'inbox' && 'bg-gray-100 text-gray-800 border-gray-200'
                                   )}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingTask(task);
+                                  }}
                                 >
                                   {task.title}
                                 </div>

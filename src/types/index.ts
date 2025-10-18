@@ -9,6 +9,7 @@ export interface Task {
   dueDate?: Date;
   scheduledDate?: Date;
   scheduledTime?: string;
+  allDay: boolean;
   duration?: number;
   subtasks?: Subtask[];
   externalId?: string;

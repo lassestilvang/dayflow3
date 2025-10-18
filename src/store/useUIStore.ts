@@ -1,10 +1,13 @@
 import { create } from 'zustand';
+import { Task, Event } from '@/types';
 
 interface UIStore {
   sidebarOpen: boolean;
   theme: 'light' | 'dark' | 'system';
   isLoading: boolean;
   notifications: Notification[];
+  editingTask: Task | null;
+  editingEvent: Event | null;
   
   // Actions
   setSidebarOpen: (open: boolean) => void;
@@ -14,6 +17,8 @@ interface UIStore {
   addNotification: (notification: Omit<Notification, 'id'>) => void;
   removeNotification: (id: string) => void;
   clearNotifications: () => void;
+  setEditingTask: (task: Task | null) => void;
+  setEditingEvent: (event: Event | null) => void;
 }
 
 interface Notification {
@@ -29,6 +34,8 @@ export const useUIStore = create<UIStore>((set, get) => ({
   theme: 'system',
   isLoading: false,
   notifications: [],
+  editingTask: null,
+  editingEvent: null,
 
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
   
@@ -59,4 +66,8 @@ export const useUIStore = create<UIStore>((set, get) => ({
   })),
   
   clearNotifications: () => set({ notifications: [] }),
+  
+  setEditingTask: (task) => set({ editingTask: task }),
+  
+  setEditingEvent: (event) => set({ editingEvent: event }),
 }));

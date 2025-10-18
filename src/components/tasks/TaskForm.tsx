@@ -28,6 +28,7 @@ export function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
     dueDate: task?.dueDate ? format(task.dueDate, 'yyyy-MM-dd') : '',
     scheduledDate: task?.scheduledDate ? format(task.scheduledDate, 'yyyy-MM-dd') : '',
     scheduledTime: task?.scheduledTime || '',
+    allDay: task?.allDay || false,
     duration: task?.duration?.toString() || '',
   });
 
@@ -150,25 +151,44 @@ export function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="scheduledDate">Schedule Date</Label>
-                <Input
-                  id="scheduledDate"
-                  type="date"
-                  value={formData.scheduledDate}
-                  onChange={(e) => setFormData({ ...formData, scheduledDate: e.target.value })}
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="allDay"
+                  checked={formData.allDay}
+                  onCheckedChange={(checked) => {
+                    setFormData({ 
+                      ...formData, 
+                      allDay: checked as boolean,
+                      scheduledTime: checked ? '' : formData.scheduledTime
+                    });
+                  }}
                 />
+                <Label htmlFor="allDay">All day task</Label>
               </div>
 
-              <div>
-                <Label htmlFor="scheduledTime">Time</Label>
-                <Input
-                  id="scheduledTime"
-                  type="time"
-                  value={formData.scheduledTime}
-                  onChange={(e) => setFormData({ ...formData, scheduledTime: e.target.value })}
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="scheduledDate">Schedule Date</Label>
+                  <Input
+                    id="scheduledDate"
+                    type="date"
+                    value={formData.scheduledDate}
+                    onChange={(e) => setFormData({ ...formData, scheduledDate: e.target.value })}
+                  />
+                </div>
+
+                {!formData.allDay && (
+                  <div>
+                    <Label htmlFor="scheduledTime">Time</Label>
+                    <Input
+                      id="scheduledTime"
+                      type="time"
+                      value={formData.scheduledTime}
+                      onChange={(e) => setFormData({ ...formData, scheduledTime: e.target.value })}
+                    />
+                  </div>
+                )}
               </div>
             </div>
 

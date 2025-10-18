@@ -16,6 +16,7 @@ const mockTasks: Task[] = [
     dueDate: new Date('2024-01-25'),
     scheduledDate: new Date('2024-01-22'),
     scheduledTime: '10:00',
+    allDay: false,
     duration: 60,
     subtasks: [
       { id: '1', title: 'Subtask 1', completed: false },

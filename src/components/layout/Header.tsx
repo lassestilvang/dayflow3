@@ -8,6 +8,7 @@ import {
   LayoutGrid
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { useCalendarStore } from '@/store';
 
 export function Header() {
@@ -92,6 +93,7 @@ export function Header() {
 
         {/* Actions */}
         <div className="flex items-center gap-2">
+          <ThemeToggle />
           <Button variant="outline" size="sm">
             <CalendarIcon className="h-4 w-4 mr-2" />
             Sync

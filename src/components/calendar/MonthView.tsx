@@ -4,7 +4,7 @@ import { format, isSameMonth, isToday, startOfMonth, endOfMonth, eachDayOfInterv
 import { useState } from 'react';
 import { DragOverlay } from '@dnd-kit/core';
 import { useDraggable, useDroppable, useDndMonitor } from '@dnd-kit/core';
-import { useCalendarStore, useEventStore, useTaskStore } from '@/store';
+import { useCalendarStore, useEventStore, useTaskStore, useUIStore } from '@/store';
 import { cn } from '@/lib/utils';
 import { Task, Event } from '@/types';
 
@@ -70,6 +70,7 @@ export function MonthView() {
   const { currentDate } = useCalendarStore();
   const { getEventsForDate, updateEvent } = useEventStore();
   const { getTasksForDate, updateTask } = useTaskStore();
+  const { setEditingTask, setEditingEvent } = useUIStore();
   const [draggedItem, setDraggedItem] = useState<Task | Event | null>(null);
 
   const monthStart = startOfMonth(currentDate);
@@ -216,12 +217,15 @@ await updateTask(item.id, {
                     {events.slice(0, 2).map((event) => (
                       <DraggableItem key={event.id} item={event}>
                         <div
-                          className="text-xs p-1 rounded truncate cursor-move"
+                          className="text-xs p-1 rounded truncate cursor-move hover:opacity-80"
                           style={{ 
                             backgroundColor: event.color + '20', 
                             color: event.color 
                           }}
-                          onClick={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingEvent(event);
+                          }}
                         >
                           {event.title}
                         </div>
@@ -233,14 +237,17 @@ await updateTask(item.id, {
                       <DraggableItem key={task.id} item={task}>
                         <div
                           className={cn(
-                            'text-xs p-1 rounded truncate cursor-move',
+                            'text-xs p-1 rounded truncate cursor-move hover:opacity-80',
                             task.category === 'work' && 'bg-blue-100 text-blue-800',
                             task.category === 'family' && 'bg-green-100 text-green-800',
                             task.category === 'personal' && 'bg-orange-100 text-orange-800',
                             task.category === 'travel' && 'bg-purple-100 text-purple-800',
                             task.category === 'inbox' && 'bg-gray-100 text-gray-800'
                           )}
-                          onClick={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingTask(task);
+                          }}
                         >
                           {task.title}
                         </div>

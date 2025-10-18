@@ -18,7 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { TaskForm } from '@/components/tasks/TaskForm';
 import { EventForm } from '@/components/events/EventForm';
-import { useTaskStore, useEventStore } from '@/store';
+import { useTaskStore, useEventStore, useUIStore } from '@/store';
 import { Task, Event } from '@/types';
 import { cn } from '@/lib/utils';
 import { useDraggable } from '@dnd-kit/core';
@@ -72,6 +72,7 @@ export function Sidebar() {
   const [showEventDialog, setShowEventDialog] = useState(false);
   const { getTasksByCategory, getOverdueTasks, addTask } = useTaskStore();
   const { addEvent } = useEventStore();
+  const { setEditingTask } = useUIStore();
   
   const overdueCount = getOverdueTasks().length;
   
@@ -141,6 +142,7 @@ export function Sidebar() {
       dueDate: taskData.dueDate,
       scheduledDate: taskData.scheduledDate,
       scheduledTime: taskData.scheduledTime,
+      allDay: taskData.allDay || false,
       duration: taskData.duration,
       subtasks: taskData.subtasks,
     });
@@ -238,7 +240,7 @@ export function Sidebar() {
                             onClick={(e) => {
                               // Prevent drag when clicking checkbox
                               if ((e.target as HTMLInputElement).type !== 'checkbox') {
-                                // Handle task click if needed
+                                setEditingTask(task);
                               }
                             }}
                           >

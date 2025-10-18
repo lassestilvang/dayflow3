@@ -2,6 +2,7 @@
 
 import { SessionProvider } from 'next-auth/react';
 import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { ThemeProvider } from './theme-provider';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const sensors = useSensors(
@@ -14,9 +15,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <SessionProvider>
-      <DndContext sensors={sensors}>
-        {children}
-      </DndContext>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <DndContext sensors={sensors}>
+          {children}
+        </DndContext>
+      </ThemeProvider>
     </SessionProvider>
   );
 }
