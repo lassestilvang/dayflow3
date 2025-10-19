@@ -137,16 +137,35 @@ export function UnifiedForm({ type: initialType = 'task', task, event, onSubmit,
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Type Selector */}
           <div>
-            <Label htmlFor="formType">Type</Label>
-            <Select value={formType} onValueChange={(value) => setFormType(value as FormType)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="task">Task</SelectItem>
-                <SelectItem value="event">Event</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label>Type</Label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setFormType('task')}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-all",
+                  formType === 'task' 
+                    ? "border-primary bg-primary/10 text-primary" 
+                    : "border-muted hover:border-muted-foreground/20"
+                )}
+              >
+                <Tag className="h-4 w-4" />
+                <span className="font-medium">Task</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormType('event')}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-all",
+                  formType === 'event' 
+                    ? "border-primary bg-primary/10 text-primary" 
+                    : "border-muted hover:border-muted-foreground/20"
+                )}
+              >
+                <Calendar className="h-4 w-4" />
+                <span className="font-medium">Event</span>
+              </button>
+            </div>
           </div>
 
           {/* Basic Info */}
@@ -276,15 +295,68 @@ export function UnifiedForm({ type: initialType = 'task', task, event, onSubmit,
                 </div>
 
                 <div>
-                  <Label htmlFor="duration">Duration (minutes)</Label>
-                  <Input
-                    id="duration"
-                    type="number"
-                    value={taskData.duration}
-                    onChange={(e) => setTaskData({ ...taskData, duration: e.target.value })}
-                    placeholder="e.g., 30, 60, 120"
-                    min="1"
-                  />
+                  <Label htmlFor="duration">Duration</Label>
+                  <div className="flex gap-2 items-center">
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setTaskData({ ...taskData, duration: '15' })}
+                        className={cn(
+                          "px-3 py-1 rounded-md border text-sm font-medium transition-all",
+                          taskData.duration === '15' 
+                            ? "border-primary bg-primary/10 text-primary" 
+                            : "border-muted hover:border-muted-foreground/20"
+                        )}
+                      >
+                        15m
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTaskData({ ...taskData, duration: '30' })}
+                        className={cn(
+                          "px-3 py-1 rounded-md border text-sm font-medium transition-all",
+                          taskData.duration === '30' 
+                            ? "border-primary bg-primary/10 text-primary" 
+                            : "border-muted hover:border-muted-foreground/20"
+                        )}
+                      >
+                        30m
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTaskData({ ...taskData, duration: '60' })}
+                        className={cn(
+                          "px-3 py-1 rounded-md border text-sm font-medium transition-all",
+                          taskData.duration === '60' 
+                            ? "border-primary bg-primary/10 text-primary" 
+                            : "border-muted hover:border-muted-foreground/20"
+                        )}
+                      >
+                        1h
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTaskData({ ...taskData, duration: '120' })}
+                        className={cn(
+                          "px-3 py-1 rounded-md border text-sm font-medium transition-all",
+                          taskData.duration === '120' 
+                            ? "border-primary bg-primary/10 text-primary" 
+                            : "border-muted hover:border-muted-foreground/20"
+                        )}
+                      >
+                        2h
+                      </button>
+                    </div>
+                    <Input
+                      id="duration"
+                      type="number"
+                      value={taskData.duration}
+                      onChange={(e) => setTaskData({ ...taskData, duration: e.target.value })}
+                      placeholder="Custom (min)"
+                      min="1"
+                      className="w-32"
+                    />
+                  </div>
                 </div>
               </div>
 

@@ -231,8 +231,8 @@ describe('TaskList', () => {
 
     expect(screen.getByText('work')).toBeInTheDocument(); // Category
     expect(screen.getByText('medium')).toBeInTheDocument(); // Priority
-    expect(screen.getByText('Jan 25')).toBeInTheDocument(); // Due date
-    expect(screen.getByText('Jan 22 at 10:00')).toBeInTheDocument(); // Scheduled date and time
+    expect(screen.getByText('Jan 25, 2024')).toBeInTheDocument(); // Due date
+    expect(screen.getByText('Jan 22, 2024 at 10:00')).toBeInTheDocument(); // Scheduled date and time
     expect(screen.getByText('60min')).toBeInTheDocument(); // Duration
     expect(screen.getByText('Subtasks (1/2)')).toBeInTheDocument(); // Subtasks count
   });

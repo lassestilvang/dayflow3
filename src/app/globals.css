@@ -120,3 +120,17 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Disable transitions during drag operations to prevent snap-back animation */
+body.dragging * {
+  transition: none !important;
+}
+
+/* Clean drag overlay styling - only target the overlay container, not content */
+[data-dnd-kit-drag-overlay] {
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  outline: none !important;
+}

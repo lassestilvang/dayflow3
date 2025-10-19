@@ -1,8 +1,13 @@
 # Agent Guidelines for Dayflow Planner
 
+## Tools
+- When you need to search docs, use `context7` tools.
+- If you are unsure how to do something, use `gh_grep` to search code examples from github.
+- When you need to look at a webpage, console log or analyze performance use `chrome-devtools`.
+
 ## Build & Test Commands
 - `pnpm dev` - Start development server with Turbopack
-- `pnpm build` - Build for production  
+- `pnpm build` - Build for production
 - `pnpm lint` - Run ESLint
 - `pnpm type-check` - Run TypeScript type checking
 - `pnpm test` - Run all unit tests

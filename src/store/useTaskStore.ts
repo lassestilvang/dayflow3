@@ -24,6 +24,7 @@ interface TaskStore {
   
   // Filters
   getTasksByCategory: (category: string) => Task[];
+  getCompletedTasksByCategory: (category: string) => Task[];
   getOverdueTasks: () => Task[];
   getTasksForDate: (date: Date) => Task[];
   getCompletedTasks: () => Task[];
@@ -229,7 +230,12 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   
   getTasksByCategory: (category) => {
     const { tasks } = get();
-    return tasks.filter((task) => task.category === category);
+    return tasks.filter((task) => task.category === category && !task.completed);
+  },
+  
+  getCompletedTasksByCategory: (category) => {
+    const { tasks } = get();
+    return tasks.filter((task) => task.category === category && task.completed);
   },
   
   getOverdueTasks: () => {

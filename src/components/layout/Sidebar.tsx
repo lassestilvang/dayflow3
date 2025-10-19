@@ -71,11 +71,12 @@ function DraggableTask({ task, children }: DraggableTaskProps) {
 
 export function Sidebar() {
   const { data: session } = useSession();
-  const [expandedCategories, setExpandedCategories] = useState<string[]>(['inbox', 'work']);
+  const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
+  const [expandedCompletedCategories, setExpandedCompletedCategories] = useState<string[]>([]);
   const [showUnifiedDialog, setShowUnifiedDialog] = useState(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [formType, setFormType] = useState<'task' | 'event'>('task');
-  const { getTasksByCategory, getOverdueTasks, addTask, updateTask } = useTaskStore();
+  const { getTasksByCategory, getCompletedTasksByCategory, getOverdueTasks, addTask, updateTask } = useTaskStore();
   const { addEvent } = useEventStore();
   const { setEditingTask } = useUIStore();
   const { settings, updateSettings } = useSettingsStore();
@@ -130,6 +131,14 @@ export function Sidebar() {
 
   const toggleCategory = (categoryId: string) => {
     setExpandedCategories(prev =>
+      prev.includes(categoryId)
+        ? prev.filter(id => id !== categoryId)
+        : [...prev, categoryId]
+    );
+  };
+
+  const toggleCompletedCategory = (categoryId: string) => {
+    setExpandedCompletedCategories(prev =>
       prev.includes(categoryId)
         ? prev.filter(id => id !== categoryId)
         : [...prev, categoryId]
@@ -227,7 +236,7 @@ export function Sidebar() {
       </div>
 
       {/* Quick Actions */}
-      <div className="p-4 space-y-2">
+      <div className="p-4">
         <Button 
           className="w-full justify-start" 
           variant="default"
@@ -237,18 +246,7 @@ export function Sidebar() {
           }}
         >
           <Plus className="h-4 w-4 mr-2" />
-          New Task
-        </Button>
-        <Button 
-          className="w-full justify-start" 
-          variant="outline"
-          onClick={() => {
-            setFormType('event');
-            setShowUnifiedDialog(true);
-          }}
-        >
-          <Calendar className="h-4 w-4 mr-2" />
-          New Event
+          New
         </Button>
       </div>
 
@@ -366,6 +364,74 @@ export function Sidebar() {
                 )}
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Completed Tasks */}
+        <div className="p-4 border-t border-border">
+          <h3 className="text-sm font-medium text-muted-foreground mb-3">Completed Tasks</h3>
+          <div className="space-y-1">
+            {categories.filter(cat => cat.id !== 'overdue').map((category) => {
+              const completedTasks = getCompletedTasksByCategory(category.id);
+              const completedCount = completedTasks.length;
+              
+              if (completedCount === 0) return null;
+              
+              return (
+                <div key={`completed-${category.id}`}>
+                  <button
+                    onClick={() => toggleCompletedCategory(category.id)}
+                    className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-accent transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      {expandedCompletedCategories.includes(category.id) ? (
+                        <ChevronDown className="h-3 w-3" />
+                      ) : (
+                        <ChevronRight className="h-3 w-3" />
+                      )}
+                      <span className={category.color}>{category.icon}</span>
+                      <span className="text-sm font-medium">{category.name}</span>
+                    </div>
+                    <Badge variant="secondary" className="text-xs">
+                      {completedCount}
+                    </Badge>
+                  </button>
+                  
+                  {expandedCompletedCategories.includes(category.id) && (
+                    <div className="ml-8 mt-1 space-y-1">
+                      {completedTasks.map((task) => (
+                        <DraggableTask key={`completed-${task.id}`} task={task}>
+                          <div
+                            className="text-xs p-2 rounded hover:bg-accent cursor-pointer flex items-center gap-2 opacity-75"
+                            onClick={(e) => {
+                              if ((e.target as HTMLInputElement).type !== 'checkbox') {
+                                setEditingTask(task);
+                              }
+                            }}
+                          >
+                            <GripVertical className="h-3 w-3 text-muted-foreground cursor-move" />
+                            <Checkbox
+                              checked={task.completed}
+                              onCheckedChange={(checked) => handleTaskCompleteToggle(task.id, checked as boolean, { stopPropagation: () => {} } as React.MouseEvent)}
+                              onClick={(e) => handleTaskCompleteToggle(task.id, !task.completed, e)}
+                              className="size-3"
+                            />
+                            <span className="flex-1 truncate line-through text-muted-foreground">
+                              {task.title}
+                            </span>
+                            {task.completedAt && (
+                              <div className="text-xs text-muted-foreground">
+                                {formatDate(task.completedAt, settings)}
+                              </div>
+                            )}
+                          </div>
+                        </DraggableTask>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

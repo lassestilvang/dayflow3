@@ -1,8 +1,7 @@
 'use client';
 
-import { isToday, setHours } from 'date-fns';
+import { isToday, setHours, startOfDay, isSameDay } from 'date-fns';
 import { useState, useEffect } from 'react';
-import { DragOverlay } from '@dnd-kit/core';
 import { useDraggable, useDroppable, useDndMonitor } from '@dnd-kit/core';
 import { useCalendarStore, useEventStore, useTaskStore, useUIStore, useSettingsStore } from '@/store';
 import { cn } from '@/lib/utils';
@@ -70,7 +69,10 @@ function DraggableItem({ item, children }: DraggableItemProps) {
   const style = transform ? {
     transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
     opacity: isDragging ? 0.5 : 1,
-  } : undefined;
+    transition: 'none',
+  } : {
+    transition: 'none',
+  };
 
   return (
     <div
@@ -132,27 +134,37 @@ export function DayView() {
   const { settings } = useSettingsStore();
   const [draggedItem, setDraggedItem] = useState<Task | Event | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [optimisticItems, setOptimisticItems] = useState<Map<string, Task | Event>>(new Map());
 
   const events = getEventsForDate(currentDate);
   const tasks = getTasksForDate(currentDate);
 
-  // Filter all-day items
-  const allDayEvents = events.filter(event => event.allDay);
-  const allDayTasks = tasks.filter(task => task.allDay);
-  const timedEvents = events.filter(event => !event.allDay);
-  const timedTasks = tasks.filter(task => !task.allDay);
+  // Helper function to get optimistic item if available
+  const getOptimisticItem = (item: Task | Event): Task | Event => {
+    return optimisticItems.get(item.id) || item;
+  };
+
+  // Apply optimistic updates to items
+  const eventsWithOptimistic = events.map(event => getOptimisticItem(event) as Event);
+  const tasksWithOptimistic = tasks.map(task => getOptimisticItem(task) as Task);
+
+  // Filter all-day items with optimistic updates
+  const allDayEvents = eventsWithOptimistic.filter(event => event.allDay);
+  const allDayTasks = tasksWithOptimistic.filter(task => task.allDay);
+  const timedEvents = eventsWithOptimistic.filter(event => !event.allDay);
+  const timedTasks = tasksWithOptimistic.filter(task => !task.allDay);
 
   // Update current time every minute
   useEffect(() => {
     const now = new Date();
     setCurrentTime(now);
-    
+
     const interval = setInterval(() => {
       setCurrentTime(new Date());
     }, 60000); // Update every minute
 
     return () => clearInterval(interval);
-  }, [currentDate]); // Reset when date changes
+  }, []);
 
   
 
@@ -162,10 +174,15 @@ export function DayView() {
       const item = active.data.current as { type: 'task' | 'event'; data: Task | Event } | undefined;
       if (item) {
         setDraggedItem(item.data);
+        // Disable transitions globally during drag
+        document.body.classList.add('dragging');
       }
     },
     onDragEnd: async (event) => {
       const { active, over } = event;
+      
+      // Re-enable transitions
+      document.body.classList.remove('dragging');
       
       if (!over) {
         setDraggedItem(null);
@@ -186,6 +203,18 @@ export function DayView() {
             const newScheduledDate = new Date(currentDate);
             newScheduledDate.setHours(0, 0, 0, 0);
             
+            const optimisticTask = {
+              ...item,
+              scheduledDate: newScheduledDate,
+              scheduledTime: undefined,
+              allDay: true,
+              updatedAt: new Date()
+            } as Task;
+            
+            // Apply optimistic update immediately
+            setOptimisticItems(prev => new Map(prev).set(item.id, optimisticTask));
+            
+            // Update in background
             try {
               await updateTask(item.id, {
                 scheduledDate: newScheduledDate,
@@ -193,8 +222,20 @@ export function DayView() {
                 allDay: true,
                 updatedAt: new Date()
               });
+              // Remove optimistic update after successful sync
+              setOptimisticItems(prev => {
+                const next = new Map(prev);
+                next.delete(item.id);
+                return next;
+              });
             } catch (error) {
               console.error('Error updating task:', error);
+              // Remove optimistic update on error
+              setOptimisticItems(prev => {
+                const next = new Map(prev);
+                next.delete(item.id);
+                return next;
+              });
             }
           } else {
             // It's an event - make it all-day
@@ -203,11 +244,38 @@ export function DayView() {
             const newEndTime = new Date(currentDate);
             newEndTime.setHours(23, 59, 59, 999);
             
+            const optimisticEvent = {
+              ...item,
+              startTime: newStartTime,
+              endTime: newEndTime,
+              allDay: true,
+              updatedAt: new Date()
+            } as Event;
+            
+            // Apply optimistic update immediately
+            setOptimisticItems(prev => new Map(prev).set(item.id, optimisticEvent));
+            
+            // Update in background
             await updateEvent(item.id, {
               startTime: newStartTime,
               endTime: newEndTime,
               allDay: true,
               updatedAt: new Date()
+            }).then(() => {
+              // Remove optimistic update after successful sync
+              setOptimisticItems(prev => {
+                const next = new Map(prev);
+                next.delete(item.id);
+                return next;
+              });
+            }).catch(error => {
+              console.error('Error updating event:', error);
+              // Remove optimistic update on error
+              setOptimisticItems(prev => {
+                const next = new Map(prev);
+                next.delete(item.id);
+                return next;
+              });
             });
           }
         } else if (dropZoneId.startsWith('hour-')) {
@@ -221,6 +289,18 @@ export function DayView() {
             
             const newScheduledTime = `${hour.toString().padStart(2, '0')}:00`;
             
+            const optimisticTask = {
+              ...item,
+              scheduledDate: newScheduledDate,
+              scheduledTime: newScheduledTime,
+              allDay: false,
+              updatedAt: new Date()
+            } as Task;
+            
+            // Apply optimistic update immediately
+            setOptimisticItems(prev => new Map(prev).set(item.id, optimisticTask));
+            
+            // Update in background
             try {
               await updateTask(item.id, {
                 scheduledDate: newScheduledDate,
@@ -228,8 +308,20 @@ export function DayView() {
                 allDay: false,
                 updatedAt: new Date()
               });
+              // Remove optimistic update after successful sync
+              setOptimisticItems(prev => {
+                const next = new Map(prev);
+                next.delete(item.id);
+                return next;
+              });
             } catch (error) {
               console.error('Error updating task:', error);
+              // Remove optimistic update on error
+              setOptimisticItems(prev => {
+                const next = new Map(prev);
+                next.delete(item.id);
+                return next;
+              });
             }
           } else {
             // It's an event
@@ -252,11 +344,38 @@ export function DayView() {
               newEndTime = new Date(newStartTime.getTime() + duration);
             }
             
+            const optimisticEvent = {
+              ...item,
+              startTime: newStartTime,
+              endTime: newEndTime,
+              allDay: false,
+              updatedAt: new Date()
+            } as Event;
+            
+            // Apply optimistic update immediately
+            setOptimisticItems(prev => new Map(prev).set(item.id, optimisticEvent));
+            
+            // Update in background
             await updateEvent(item.id, {
               startTime: newStartTime,
               endTime: newEndTime,
               allDay: false,
               updatedAt: new Date()
+            }).then(() => {
+              // Remove optimistic update after successful sync
+              setOptimisticItems(prev => {
+                const next = new Map(prev);
+                next.delete(item.id);
+                return next;
+              });
+            }).catch(error => {
+              console.error('Error updating event:', error);
+              // Remove optimistic update on error
+              setOptimisticItems(prev => {
+                const next = new Map(prev);
+                next.delete(item.id);
+                return next;
+              });
             });
           }
         }
@@ -286,111 +405,112 @@ export function DayView() {
 
 return (
     <>
-      <div className="flex-1 overflow-auto bg-background relative">
+      <div className="h-full overflow-auto bg-background relative">
         <div className="max-w-4xl mx-auto relative">
-          <DroppableAllDay onClick={() => {
-            setCreateDialogData({
-              date: currentDate,
-              allDay: true,
-            });
-          }}>
-            <div className="flex">
-              <div className="w-20 py-2 pr-4 text-right text-sm font-medium text-muted-foreground sticky left-0 bg-background">
-                All day
-              </div>
-              <div className="flex-1 p-2">
-                <div className="space-y-2">
-                  {/* All-day events */}
-                  {allDayEvents.map((event) => (
-                    <DraggableItem key={event.id} item={event}>
-                      <div
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingEvent(event);
-                        }}
-                        className="p-2 rounded-lg border cursor-move text-sm hover:opacity-80 inline-block mr-2 mb-2"
-                        style={{ 
-                          backgroundColor: event.color + '20', 
-                          borderColor: event.color,
-                          color: event.color 
-                        }}
-                      >
-                        <div className="font-medium">{event.title}</div>
-                        {event.description && (
-                          <div className="text-xs opacity-75 mt-1">{event.description}</div>
-                        )}
-                      </div>
-                    </DraggableItem>
-                  ))}
-                  
-                  {/* All-day tasks */}
-                  {allDayTasks.map((task) => (
-                    <DraggableItem key={`${task.id}-${task.completed ? 'completed' : 'incomplete'}`} item={task}>
-                      <div
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingTask(task);
-                        }}
-                        className={cn(
-                          'p-2 rounded-lg border cursor-move text-sm hover:opacity-80 inline-block mr-2 mb-2',
-                          task.category === 'work' && 'bg-blue-100 text-blue-800 border-blue-200',
-                          task.category === 'family' && 'bg-green-100 text-green-800 border-green-200',
-                          task.category === 'personal' && 'bg-orange-100 text-orange-800 border-orange-200',
-                          task.category === 'travel' && 'bg-purple-100 text-purple-800 border-purple-200',
-                          task.category === 'inbox' && 'bg-gray-100 text-gray-800 border-gray-200'
-                        )}
-                      >
-                        <div className="flex items-center gap-2">
-                          <Checkbox
-                            checked={task.completed}
-                            onCheckedChange={(checked) => handleTaskCompleteToggle(task.id, checked as boolean, { stopPropagation: () => {} } as React.MouseEvent)}
-                            onClick={(e) => handleTaskCompleteToggle(task.id, !task.completed, e)}
-                            className="size-4"
-                          />
-                          <span className={cn(task.completed && 'line-through opacity-60')}>
-                            {task.title}
-                          </span>
+          <div className="sticky top-0 z-30 bg-background">
+            <DroppableAllDay onClick={() => {
+              setCreateDialogData({
+                date: currentDate,
+                allDay: true,
+              });
+            }}>
+              <div className="flex">
+                <div className="w-20 py-2 pr-4 text-right text-sm font-medium text-muted-foreground sticky left-0 bg-background">
+                  All day
+                </div>
+                <div className="flex-1 p-2">
+                  <div className="space-y-2">
+                    {/* All-day events */}
+                    {allDayEvents.map((event) => (
+                      <DraggableItem key={event.id} item={event}>
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingEvent(event);
+                          }}
+                          className="p-2 rounded-lg border cursor-move text-sm hover:opacity-80 inline-block mr-2 mb-2"
+                          style={{ 
+                            backgroundColor: event.color + '20', 
+                            borderColor: event.color,
+                            color: event.color 
+                          }}
+                        >
+                          <div className="font-medium">{event.title}</div>
+                          {event.description && (
+                            <div className="text-xs opacity-75 mt-1">{event.description}</div>
+                          )}
                         </div>
-                        {task.description && (
-                          <div className="text-xs opacity-75 mt-1 ml-6">{task.description}</div>
-                        )}
+                      </DraggableItem>
+                    ))}
+                    
+                    {/* All-day tasks */}
+                    {allDayTasks.map((task) => (
+                      <DraggableItem key={`${task.id}-${task.completed ? 'completed' : 'incomplete'}`} item={task}>
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingTask(task);
+                          }}
+                          className={cn(
+                            'p-2 rounded-lg border cursor-move text-sm hover:opacity-80 inline-block mr-2 mb-2',
+                            task.category === 'work' && 'bg-blue-100 text-blue-800 border-blue-200',
+                            task.category === 'family' && 'bg-green-100 text-green-800 border-green-200',
+                            task.category === 'personal' && 'bg-orange-100 text-orange-800 border-orange-200',
+                            task.category === 'travel' && 'bg-purple-100 text-purple-800 border-purple-200',
+                            task.category === 'inbox' && 'bg-gray-100 text-gray-800 border-gray-200'
+                          )}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Checkbox
+                              checked={task.completed}
+                              onCheckedChange={(checked) => handleTaskCompleteToggle(task.id, checked as boolean, { stopPropagation: () => {} } as React.MouseEvent)}
+                              onClick={(e) => handleTaskCompleteToggle(task.id, !task.completed, e)}
+                              className="size-4"
+                            />
+                            <span className={cn(task.completed && 'line-through opacity-60')}>
+                              {task.title}
+                            </span>
+                          </div>
+                          {task.description && (
+                            <div className="text-xs opacity-75 mt-1 ml-6">{task.description}</div>
+                          )}
+                        </div>
+                      </DraggableItem>
+                    ))}
+                    
+                    {/* Empty all-day slot indicator */}
+                    {allDayEvents.length === 0 && allDayTasks.length === 0 && (
+                      <div className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity p-2">
+                        Drag items here to make them all-day
                       </div>
-                    </DraggableItem>
-                  ))}
-                  
-                  {/* Empty all-day slot indicator */}
-                  {allDayEvents.length === 0 && allDayTasks.length === 0 && (
-                    <div className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity p-2">
-                      Drag items here to make them all-day
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          </DroppableAllDay>
-
-          {/* Current time indicator */}
-          {isToday(currentDate) && (
-            <div 
-              className="absolute left-20 right-0 z-10 pointer-events-none"
-              style={{
-                top: `${currentTime.getHours() * HOUR_HEIGHT + currentTime.getMinutes() * (HOUR_HEIGHT / 60)}px`,
-              }}
-            >
-              <div className="flex items-center">
-                <div className="w-2 h-2 bg-red-500 rounded-full -ml-1"></div>
-                <div className="flex-1 h-0.5 bg-red-500"></div>
-              </div>
-            </div>
-          )}
+            </DroppableAllDay>
+          </div>
 
           {/* Time slots with positioned events and tasks */}
           <div className="relative" style={{ minHeight: `${HOURS.length * HOUR_HEIGHT}px` }}>
+            {/* Current time indicator */}
+            {isToday(currentDate) && (
+              <div 
+                className="absolute left-0 right-0 z-10 pointer-events-none"
+                style={{
+                  top: `${currentTime.getHours() * HOUR_HEIGHT + currentTime.getMinutes() * (HOUR_HEIGHT / 60)}px`,
+                }}
+              >
+                <div className="flex items-center">
+                  <div className="w-2 h-2 bg-red-500 rounded-full -ml-1"></div>
+                  <div className="flex-1 h-0.5 bg-red-500"></div>
+                </div>
+              </div>
+            )}
             {/* Time labels and drop zones */}
             {HOURS.map((hour) => (
               <DroppableHour key={hour} hour={hour}>
                 {/* Time label */}
-<div className="w-20 py-4 pr-4 text-right text-sm text-muted-foreground font-medium sticky left-0 bg-background z-20">
+<div className="w-20 py-4 pr-4 text-right text-sm text-muted-foreground font-medium sticky left-0 z-20">
                   {formatTime(createHourDate(hour), settings)}
                 </div>
 
@@ -504,13 +624,7 @@ return (
          </div>
        </div>
 
-       <DragOverlay>
-         {draggedItem && (
-           <div className="p-2 rounded-lg border shadow-lg bg-background">
-             <div className="font-medium">{draggedItem.title}</div>
-           </div>
-         )}
-       </DragOverlay>
+       
      </>
    );
 }
