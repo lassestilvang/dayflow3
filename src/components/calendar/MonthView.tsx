@@ -603,7 +603,7 @@ export function MonthView() {
             {"category" in draggedItem ? (
               <div
                 className={cn(
-                  "text-xs p-1 rounded truncate flex items-center gap-1 h-6 ml-10",
+                  "text-xs p-1 rounded truncate flex items-center gap-1 h-6",
                   draggedItem.category === "work" &&
                     "bg-blue-100 text-blue-800",
                   draggedItem.category === "family" &&
