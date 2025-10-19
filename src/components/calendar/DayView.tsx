@@ -60,9 +60,10 @@ function getItemHeight(duration: number): number {
 interface DraggableItemProps {
   item: Task | Event;
   children: React.ReactNode;
+  isResizing?: boolean;
 }
 
-function DraggableItem({ item, children }: DraggableItemProps) {
+function DraggableItem({ item, children, isResizing }: DraggableItemProps & { isResizing?: boolean }) {
   const isTask = 'category' in item;
   
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -71,6 +72,7 @@ function DraggableItem({ item, children }: DraggableItemProps) {
       type: isTask ? 'task' : 'event',
       data: item,
     },
+    disabled: isResizing, // Disable dragging when resizing
   });
 
   const style = transform ? {
@@ -180,7 +182,12 @@ function ResizableItem({ item, children, top, height, onResizeStart, isResizing,
           'absolute top-0 left-0 right-0 h-2 z-30 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-opacity',
           isBeingResized && resizeHandle?.type === 'top' && 'opacity-100 bg-primary/20'
         )}
-        onMouseDown={(e) => onResizeStart(e, 'top')}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          e.nativeEvent.stopImmediatePropagation();
+          onResizeStart(e, 'top');
+        }}
       />
       
       {/* Main content */}
@@ -194,7 +201,12 @@ function ResizableItem({ item, children, top, height, onResizeStart, isResizing,
           'absolute bottom-0 left-0 right-0 h-2 z-30 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-opacity',
           isBeingResized && resizeHandle?.type === 'bottom' && 'opacity-100 bg-primary/20'
         )}
-        onMouseDown={(e) => onResizeStart(e, 'bottom')}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          e.nativeEvent.stopImmediatePropagation();
+          onResizeStart(e, 'bottom');
+        }}
       />
     </div>
   );
@@ -616,7 +628,7 @@ return (
                   <div className="space-y-2">
                     {/* All-day events */}
                     {allDayEvents.map((event) => (
-                      <DraggableItem key={event.id} item={event}>
+                      <DraggableItem key={event.id} item={event} isResizing={isResizing && resizeHandle?.itemId === event.id}>
                         <div
                           onClick={(e) => {
                             e.stopPropagation();
@@ -639,7 +651,7 @@ return (
                     
                     {/* All-day tasks */}
                     {allDayTasks.map((task) => (
-                      <DraggableItem key={`${task.id}-${task.completed ? 'completed' : 'incomplete'}`} item={task}>
+                      <DraggableItem key={`${task.id}-${task.completed ? 'completed' : 'incomplete'}`} item={task} isResizing={isResizing && resizeHandle?.itemId === task.id}>
                         <div
                           onClick={(e) => {
                             e.stopPropagation();
@@ -743,7 +755,7 @@ return (
                        width: '100%',
                      }}
                   >
-                    <DraggableItem item={event}>
+                    <DraggableItem item={event} isResizing={isResizing && resizeHandle?.itemId === event.id}>
                       <ResizableItem
                         item={event}
                         top={top}
@@ -800,7 +812,7 @@ return (
                        width: '100%',
                      }}
                   >
-                    <DraggableItem item={task}>
+                    <DraggableItem item={task} isResizing={isResizing && resizeHandle?.itemId === task.id}>
                       <ResizableItem
                         item={task}
                         top={top}

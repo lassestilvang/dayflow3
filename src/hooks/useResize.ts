@@ -37,6 +37,9 @@ export function useResize() {
     e.preventDefault();
     e.stopPropagation();
     
+    // Stop propagation to prevent drag from triggering
+    e.nativeEvent.stopImmediatePropagation();
+    
     setIsResizing(true);
     setResizeHandle(handle);
     setStartY(e.clientY);
