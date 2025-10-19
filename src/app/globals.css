@@ -121,18 +121,83 @@
   }
 }
 
+/* Hide the default dnd-kit drag placeholder */
+[data-dnd-kit-placeholder] {
+  display: none !important;
+}
+
+
+
 /* Disable transitions during drag operations to prevent snap-back animation */
-body.dragging * {
+body.dragging [data-dnd-kit-draggable] {
   transition: none !important;
 }
 
-/* Clean drag overlay styling - only target the overlay container, not content */
-[data-dnd-kit-drag-overlay] {
-  background: transparent !important;
-  background-color: transparent !important;
-  box-shadow: none !important;
+/* Target our custom drag overlay content class */
+.drag-overlay-content {
   border: none !important;
   outline: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+  border-style: none !important;
+  border-width: 0 !important;
+  outline-color: transparent !important;
+  outline-style: none !important;
+  outline-width: 0 !important;
+  background-clip: padding-box !important;
+  -webkit-background-clip: padding-box !important;
+  -moz-background-clip: padding-box !important;
+}
+
+
+
+/* Ultra-specific rule to override everything */
+html body div[data-dnd-kit-drag-overlay] .drag-overlay-content {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+  border-style: solid !important;
+  border-width: 0 !important;
+  outline-color: transparent !important;
+  outline-style: none !important;
+  outline-width: 0 !important;
+  background-clip: padding-box !important;
+  -webkit-background-clip: padding-box !important;
+  -moz-background-clip: padding-box !important;
+}
+
+/* Try to hide any possible border artifacts */
+html body div[data-dnd-kit-drag-overlay] {
+  border: 0 !important;
+  border-style: none !important;
+  border-width: 0 !important;
+  border-color: transparent !important;
+  outline: none !important;
+  outline-color: transparent !important;
+  outline-style: none !important;
+  outline-width: 0 !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+}
+
+
+
+/* Remove any possible outline from the drag overlay and all its children */
+[data-dnd-kit-drag-overlay],
+[data-dnd-kit-drag-overlay] *,
+[data-dnd-kit-drag-overlay] *::before,
+[data-dnd-kit-drag-overlay] *::after {
+  outline: none !important;
+  outline-color: transparent !important;
+  outline-style: none !important;
+  outline-width: 0 !important;
+  box-shadow: none !important;
+  border: none !important;
+  -webkit-outline: none !important;
+  -moz-outline: none !important;
+  -webkit-focus-ring-color: transparent !important;
 }
 
 /* Hide the default dnd-kit drag placeholder */
@@ -147,11 +212,170 @@ body.dragging * {
 
 /* Hide the original draggable element when it's being dragged */
 [data-dnd-kit-draggable][data-dnd-kit-dragging] {
-  opacity: 0 !important;
-  visibility: hidden !important;
+  opacity: 0.3 !important;
 }
 
-/* Additional styles to hide ghost elements during drag */
-body.dragging [data-dnd-kit-draggable]:not([data-dnd-kit-dragging]) {
-  opacity: 0.3 !important;
+
+
+/* Specifically target drag overlay with maximum specificity */
+html body [data-dnd-kit-drag-overlay] {
+  outline: none !important;
+  outline-color: transparent !important;
+  outline-style: none !important;
+  outline-width: 0 !important;
+  box-shadow: none !important;
+  border: none !important;
+  -webkit-outline: none !important;
+  -moz-outline: none !important;
+  -webkit-focus-ring-color: transparent !important;
+  border-image: none !important;
+  border-image-source: none !important;
+  border-image-slice: none !important;
+  border-image-width: none !important;
+  border-image-outset: none !important;
+  border-image-repeat: none !important;
+  -webkit-border-image: none !important;
+  -moz-border-image: none !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  transform: translateZ(0) !important;
+  -webkit-transform: translateZ(0) !important;
+  -moz-transform: translateZ(0) !important;
+  -ms-transform: translateZ(0) !important;
+  -o-transform: translateZ(0) !important;
+  will-change: transform !important;
+}
+
+/* Target our custom drag overlay content class */
+.drag-overlay-content {
+  outline: none !important;
+  outline-color: transparent !important;
+  outline-style: none !important;
+  outline-width: 0 !important;
+  box-shadow: none !important;
+  border: none !important;
+  border-top: none !important;
+  border-right: none !important;
+  border-bottom: none !important;
+  border-left: none !important;
+  border-color: transparent !important;
+  border-style: none !important;
+  border-width: 0 !important;
+  -webkit-outline: none !important;
+  -moz-outline: none !important;
+  -webkit-focus-ring-color: transparent !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  -webkit-user-drag: none !important;
+  -khtml-user-drag: none !important;
+  -moz-user-drag: none !important;
+  -o-user-drag: none !important;
+  user-drag: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background-clip: padding-box !important;
+  -webkit-background-clip: padding-box !important;
+  -moz-background-clip: padding-box !important;
+}
+
+.drag-overlay-content *,
+.drag-overlay-content *::before,
+.drag-overlay-content *::after {
+  outline: none !important;
+  outline-color: transparent !important;
+  outline-style: none !important;
+  outline-width: 0 !important;
+  box-shadow: none !important;
+  border: none !important;
+  border-top: none !important;
+  border-right: none !important;
+  border-bottom: none !important;
+  border-left: none !important;
+  border-color: transparent !important;
+  border-style: none !important;
+  border-width: 0 !important;
+  -webkit-outline: none !important;
+  -moz-outline: none !important;
+  -webkit-focus-ring-color: transparent !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  text-shadow: none !important;
+  -webkit-text-shadow: none !important;
+  -moz-text-shadow: none !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  -webkit-user-drag: none !important;
+  -khtml-user-drag: none !important;
+  -moz-user-drag: none !important;
+  -o-user-drag: none !important;
+  user-drag: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background-clip: padding-box !important;
+  -webkit-background-clip: padding-box !important;
+  -moz-background-clip: padding-box !important;
+}
+
+/* Ultra-specific rule to override everything */
+html body div[data-dnd-kit-drag-overlay] .drag-overlay-content {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+  border-style: solid !important;
+  border-width: 0 !important;
+  outline-color: transparent !important;
+  outline-style: none !important;
+  outline-width: 0 !important;
+  background-clip: padding-box !important;
+  -webkit-background-clip: padding-box !important;
+  -moz-background-clip: padding-box !important;
+}
+
+/* Try to hide any possible border artifacts */
+html body div[data-dnd-kit-drag-overlay] {
+  border: 0 !important;
+  border-style: none !important;
+  border-width: 0 !important;
+  border-color: transparent !important;
+  outline: none !important;
+  outline-color: transparent !important;
+  outline-style: none !important;
+  outline-width: 0 !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Hide any possible border from all children of drag overlay */
+html body div[data-dnd-kit-drag-overlay] > *,
+html body div[data-dnd-kit-drag-overlay] > * > *,
+html body div[data-dnd-kit-drag-overlay] > * > * > * {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+  border-style: none !important;
+  border-width: 0 !important;
+  outline-color: transparent !important;
+  outline-style: none !important;
+  outline-width: 0 !important;
 }
