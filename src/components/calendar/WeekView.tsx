@@ -387,6 +387,9 @@ export function WeekView() {
     };
 
     const handleGlobalMouseUp = async () => {
+      // Immediately stop resizing to prevent any further mouse movement handling
+      stopResize();
+      
       if (resizeHandle) {
         if (finalDelta !== undefined) {
           const result = calculateResizeResult(finalDelta);
@@ -443,8 +446,6 @@ export function WeekView() {
           }
         }
       }
-      
-      stopResize();
     };
 
     document.addEventListener('mousemove', handleGlobalMouseMove);
@@ -454,7 +455,7 @@ export function WeekView() {
       document.removeEventListener('mousemove', handleGlobalMouseMove);
       document.removeEventListener('mouseup', handleGlobalMouseUp);
     };
-  }, [isResizing, resizeHandle, handleMouseMove, calculateResizeResult, stopResize, updateEvent, updateTask, startY, finalDelta]);
+  }, [isResizing, resizeHandle, handleMouseMove, calculateResizeResult, stopResize, updateEvent, updateTask, finalDelta]);
 
   useDndMonitor({
     onDragStart: (event) => {
