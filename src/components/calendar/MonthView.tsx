@@ -7,6 +7,7 @@ import { useCalendarStore, useEventStore, useTaskStore, useUIStore } from '@/sto
 import { cn } from '@/lib/utils';
 import { Task, Event } from '@/types';
 import { Checkbox } from '@/components/ui/checkbox';
+import { DayOverviewModal } from './DayOverviewModal';
 
 interface DraggableItemProps {
   item: Task | Event;
@@ -46,13 +47,14 @@ function DraggableItem({ item, children }: DraggableItemProps) {
   );
 }
 
-function DayItems({ events, tasks, onTaskComplete, onEditEvent, onEditTask, maxItems }: {
+function DayItems({ events, tasks, onTaskComplete, onEditEvent, onEditTask, maxItems, onShowMore }: {
   events: Event[];
   tasks: Task[];
   onTaskComplete: (taskId: string, completed: boolean, e: React.MouseEvent) => void;
   onEditEvent: (event: Event) => void;
   onEditTask: (task: Task) => void;
   maxItems: number;
+  onShowMore: () => void;
 }) {
   const allItems = [
     ...events.map(event => ({ type: 'event' as const, data: event })),
@@ -117,7 +119,13 @@ function DayItems({ events, tasks, onTaskComplete, onEditEvent, onEditTask, maxI
       })}
       
       {remainingCount > 0 && (
-        <div className="text-xs text-muted-foreground cursor-pointer hover:text-foreground h-6 flex items-center">
+        <div 
+          className="text-xs text-muted-foreground cursor-pointer hover:text-foreground h-6 flex items-center"
+          onClick={(e) => {
+            e.stopPropagation();
+            onShowMore();
+          }}
+        >
           +{remainingCount} more
         </div>
       )}
@@ -162,6 +170,17 @@ const [draggedElement, setDraggedElement] = useState<{item: Task | Event, elemen
   const [maxItemsPerCell, setMaxItemsPerCell] = useState(3);
   const gridRef = useRef<HTMLDivElement>(null);
   const [optimisticItems, setOptimisticItems] = useState<Map<string, Task | Event>>(new Map());
+  const [dayOverviewModal, setDayOverviewModal] = useState<{
+    isOpen: boolean;
+    date: Date | null;
+    events: Event[];
+    tasks: Task[];
+  }>({
+    isOpen: false,
+    date: null,
+    events: [],
+    tasks: []
+  });
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -384,6 +403,24 @@ onDragEnd: async (event) => {
     });
   };
 
+  const handleShowMore = (date: Date, events: Event[], tasks: Task[]) => {
+    setDayOverviewModal({
+      isOpen: true,
+      date,
+      events,
+      tasks
+    });
+  };
+
+  const handleCloseDayOverview = () => {
+    setDayOverviewModal({
+      isOpen: false,
+      date: null,
+      events: [],
+      tasks: []
+    });
+  };
+
   
 
   // Calculate max items per cell based on available height
@@ -457,15 +494,16 @@ className={cn(
                      {format(date, 'd')}
                    </div>
 
-                   {/* Events and tasks preview */}
-                   <DayItems
-                     events={events}
-                     tasks={tasks}
-                     onTaskComplete={handleTaskCompleteToggle}
-                     onEditEvent={setEditingEvent}
-                     onEditTask={setEditingTask}
-                     maxItems={maxItemsPerCell}
-                   />
+{/* Events and tasks preview */}
+                    <DayItems
+                      events={events}
+                      tasks={tasks}
+                      onTaskComplete={handleTaskCompleteToggle}
+                      onEditEvent={setEditingEvent}
+                      onEditTask={setEditingTask}
+                      maxItems={maxItemsPerCell}
+                      onShowMore={() => handleShowMore(date, events, tasks)}
+                    />
                  </DroppableDay>
                );
             })}
@@ -504,6 +542,20 @@ className={cn(
           </div>
         )}
       </DragOverlay>
+
+      {/* Day Overview Modal */}
+      {dayOverviewModal.date && (
+        <DayOverviewModal
+          isOpen={dayOverviewModal.isOpen}
+          onClose={handleCloseDayOverview}
+          date={dayOverviewModal.date}
+          events={dayOverviewModal.events}
+          tasks={dayOverviewModal.tasks}
+          onTaskComplete={handleTaskCompleteToggle}
+          onEditEvent={setEditingEvent}
+          onEditTask={setEditingTask}
+        />
+      )}
     </>
   );
 }
