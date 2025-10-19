@@ -11,6 +11,12 @@ import { formatTime } from '@/lib/dateUtils';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const HOUR_HEIGHT = 80; // pixels per hour
+const TIME_BLOCKS = [
+  { start: 0, end: 14, label: '00' },
+  { start: 15, end: 29, label: '15' },
+  { start: 30, end: 44, label: '30' },
+  { start: 45, end: 59, label: '45' }
+];
 
 // Helper function to create a date with specific hour and minutes set to 0
 function createHourDate(hour: number): Date {
@@ -101,6 +107,31 @@ function DroppableHour({ hour, children }: { hour: number; children: React.React
         isOver && 'bg-accent/20'
       )}
       style={{ height: `${HOUR_HEIGHT}px` }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function DroppableTimeBlock({ hour, block, children, onClick }: { 
+  hour: number; 
+  block: { start: number; end: number; label: string }; 
+  children: React.ReactNode;
+  onClick?: () => void;
+}) {
+  const blockId = `hour-${hour}-block-${block.label}`;
+  const { isOver, setNodeRef } = useDroppable({
+    id: blockId,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        'flex-1 hover:bg-accent/30 cursor-pointer transition-colors',
+        isOver && 'bg-accent/20'
+      )}
+      onClick={onClick}
     >
       {children}
     </div>
@@ -279,15 +310,28 @@ export function DayView() {
             });
           }
         } else if (dropZoneId.startsWith('hour-')) {
-          // Handle dropping in specific hour
-          const hour = parseInt(dropZoneId.replace('hour-', ''));
+          // Handle dropping in specific hour or time block
+          let hour: number;
+          let minute: number = 0;
+          
+          if (dropZoneId.includes('-block-')) {
+            // Handle dropping in specific time block
+            const parts = dropZoneId.split('-');
+            hour = parseInt(parts[1]);
+            const blockLabel = parts[3];
+            minute = parseInt(blockLabel);
+          } else {
+            // Handle dropping in hour (default to 0 minutes)
+            hour = parseInt(dropZoneId.replace('hour-', ''));
+            minute = 0;
+          }
           
           if ('category' in item) {
             // It's a task
             const newScheduledDate = new Date(currentDate);
             newScheduledDate.setHours(0, 0, 0, 0); // Reset time to midnight
             
-            const newScheduledTime = `${hour.toString().padStart(2, '0')}:00`;
+            const newScheduledTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
             
             const optimisticTask = {
               ...item,
@@ -331,7 +375,7 @@ export function DayView() {
             if (fromSidebar) {
               // Event from sidebar (unlikely but handle it)
               newStartTime = new Date(currentDate);
-              newStartTime.setHours(hour, 0, 0, 0);
+              newStartTime.setHours(hour, minute, 0, 0);
               newEndTime = new Date(newStartTime.getTime() + 60 * 60 * 1000); // Default 1 hour
             } else {
               // Existing event being rescheduled
@@ -340,7 +384,7 @@ export function DayView() {
               const duration = originalEnd.getTime() - originalStart.getTime();
               
               newStartTime = new Date(currentDate);
-              newStartTime.setHours(hour, 0, 0, 0);
+              newStartTime.setHours(hour, minute, 0, 0);
               newEndTime = new Date(newStartTime.getTime() + duration);
             }
             
@@ -385,8 +429,8 @@ export function DayView() {
     },
   });
 
-  const handleTimeSlotClick = (hour: number) => {
-    const time = `${hour.toString().padStart(2, '0')}:00`;
+  const handleTimeSlotClick = (hour: number, minute: number) => {
+    const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
     setCreateDialogData({
       date: currentDate,
       time,
@@ -514,17 +558,22 @@ return (
                   {formatTime(createHourDate(hour), settings)}
                 </div>
 
-                {/* Content area */}
-                <div 
-                  className="flex-1 min-h-[80px] relative hover:bg-accent/30 cursor-pointer"
-                  onClick={() => handleTimeSlotClick(hour)}
-                  style={{ height: `${HOUR_HEIGHT}px` }}
-                >
-                   {/* Empty slot indicator */}
-                   <div className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity p-2">
-                     Click to add event or task
-                   </div>
-                 </div>
+                {/* Content area with 4 time blocks */}
+                <div className="flex-1 flex" style={{ height: `${HOUR_HEIGHT}px` }}>
+                  {TIME_BLOCKS.map((block) => (
+                    <DroppableTimeBlock
+                      key={`${hour}-${block.label}`}
+                      hour={hour}
+                      block={block}
+                      onClick={() => handleTimeSlotClick(hour, block.start)}
+                    >
+                      {/* Empty slot indicator */}
+                      <div className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity p-1">
+                        {block.label}
+                      </div>
+                    </DroppableTimeBlock>
+                  ))}
+                </div>
                </DroppableHour>
              ))}
 

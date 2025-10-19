@@ -17,6 +17,12 @@ import { formatTime } from "@/lib/dateUtils";
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const HOUR_HEIGHT = 60; // pixels per hour
+const TIME_BLOCKS = [
+  { start: 0, end: 14, label: '00' },
+  { start: 15, end: 29, label: '15' },
+  { start: 30, end: 44, label: '30' },
+  { start: 45, end: 59, label: '45' }
+];
 
 // Helper function to create a date with specific hour and minutes set to 0
 function createHourDate(hour: number): Date {
@@ -114,10 +120,41 @@ function DroppableSlot({
     <div
       ref={setNodeRef}
       className={cn(
-        "border-b border-border relative group hover:bg-accent/50 cursor-pointer",
+        "border-b border-border relative group",
         isOver && "bg-accent/20",
       )}
       style={{ height: `${HOUR_HEIGHT}px` }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function DroppableTimeBlock({
+  date,
+  hour,
+  block,
+  children,
+  onClick,
+}: {
+  date: Date;
+  hour: number;
+  block: { start: number; end: number; label: string };
+  children: React.ReactNode;
+  onClick?: () => void;
+}) {
+  const blockId = `${format(date, "yyyy-MM-dd")}-hour-${hour}-block-${block.label}`;
+  const { isOver, setNodeRef } = useDroppable({
+    id: blockId,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        'flex-1 hover:bg-accent/30 cursor-pointer transition-colors',
+        isOver && 'bg-accent/20'
+      )}
       onClick={onClick}
     >
       {children}
@@ -366,14 +403,31 @@ export function WeekView() {
             });
           }
         } else if (dropZoneId.includes("-hour-")) {
-          // Handle dropping in specific hour
-          const [datePart, hourPart] = dropZoneId.split("-hour-");
-          const hour = parseInt(hourPart);
-          const newDate = new Date(datePart);
+          // Handle dropping in specific hour or time block
+          let hour: number;
+          let minute: number = 0;
+          let newDate: Date;
+          
+          if (dropZoneId.includes('-block-')) {
+            // Handle dropping in specific time block
+            const parts = dropZoneId.split('-hour-');
+            const datePart = parts[0];
+            const timePart = parts[1];
+            const timeParts = timePart.split('-block-');
+            hour = parseInt(timeParts[0]);
+            minute = parseInt(timeParts[1]);
+            newDate = new Date(datePart);
+          } else {
+            // Handle dropping in hour (default to 0 minutes)
+            const [datePart, hourPart] = dropZoneId.split("-hour-");
+            hour = parseInt(hourPart);
+            minute = 0;
+            newDate = new Date(datePart);
+          }
 
           if ("category" in item) {
             // It's a task
-            const newScheduledTime = `${hour.toString().padStart(2, "0")}:00`;
+            const newScheduledTime = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
 
             const optimisticTask = {
               ...item,
@@ -416,7 +470,7 @@ export function WeekView() {
             if (fromSidebar) {
               // Event from sidebar (unlikely but handle it)
               newStartTime = new Date(newDate);
-              newStartTime.setHours(hour, 0, 0, 0);
+              newStartTime.setHours(hour, minute, 0, 0);
               newEndTime = new Date(newStartTime.getTime() + 60 * 60 * 1000); // Default 1 hour
             } else {
               // Existing event being rescheduled
@@ -425,7 +479,7 @@ export function WeekView() {
               const duration = originalEnd.getTime() - originalStart.getTime();
 
               newStartTime = new Date(newDate);
-              newStartTime.setHours(hour, 0, 0, 0);
+              newStartTime.setHours(hour, minute, 0, 0);
               newEndTime = new Date(newStartTime.getTime() + duration);
             }
 
@@ -667,16 +721,30 @@ className={cn(
                         key={hour}
                         date={date}
                         hour={hour}
-                        onClick={() => {
-                          const time = `${hour.toString().padStart(2, "0")}:00`;
-                          setCreateDialogData({
-                            date,
-                            time,
-                            allDay: false,
-                          });
-                        }}
                       >
-                        <div className="w-full h-full" />
+                        <div className="flex w-full h-full">
+                          {TIME_BLOCKS.map((block) => (
+                            <DroppableTimeBlock
+                              key={`${hour}-${block.label}`}
+                              date={date}
+                              hour={hour}
+                              block={block}
+                              onClick={() => {
+                                const time = `${hour.toString().padStart(2, "0")}:${block.label}`;
+                                setCreateDialogData({
+                                  date,
+                                  time,
+                                  allDay: false,
+                                });
+                              }}
+                            >
+                              {/* Empty slot indicator */}
+                              <div className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity p-1">
+                                {block.label}
+                              </div>
+                            </DroppableTimeBlock>
+                          ))}
+                        </div>
                       </DroppableSlot>
                     ))}
 
