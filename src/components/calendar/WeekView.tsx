@@ -72,23 +72,27 @@ function DroppableSlot({
   hour,
   children,
   onClick,
+  isResizing,
 }: {
   date: Date;
   hour: number;
   children: React.ReactNode;
   onClick?: () => void;
+  isResizing?: boolean;
 }) {
   const slotId = `${format(date, "yyyy-MM-dd")}-hour-${hour}`;
   const { isOver, setNodeRef } = useDroppable({
     id: slotId,
+    disabled: isResizing,
   });
 
   return (
     <div
       ref={setNodeRef}
       className={cn(
-        "border-b border-border relative group",
-        isOver && "bg-accent/20",
+        "border-b border-border relative",
+        isOver && !isResizing && "bg-accent/20",
+        !isResizing && "group",
       )}
       style={{ height: `${HOUR_HEIGHT}px` }}
     >
@@ -103,26 +107,31 @@ function DroppableTimeBlock({
   block,
   children,
   onClick,
+  isResizing,
 }: {
   date: Date;
   hour: number;
   block: { start: number; end: number; label: string };
   children: React.ReactNode;
   onClick?: () => void;
+  isResizing?: boolean;
 }) {
   const blockId = `${format(date, "yyyy-MM-dd")}-hour-${hour}-block-${block.label}`;
   const { isOver, setNodeRef } = useDroppable({
     id: blockId,
+    disabled: isResizing,
   });
 
   return (
     <div
       ref={setNodeRef}
       className={cn(
-        'flex-1 hover:bg-accent/60 cursor-pointer transition-colors',
-        isOver && 'bg-accent/40'
+        'flex-1 transition-colors',
+        !isResizing && 'hover:bg-accent/60 cursor-pointer',
+        isOver && !isResizing && 'bg-accent/40',
+        isResizing && 'cursor-not-allowed'
       )}
-      onClick={onClick}
+      onClick={!isResizing ? onClick : undefined}
     >
       {children}
     </div>
@@ -133,14 +142,17 @@ function DroppableAllDaySlot({
   date,
   children,
   onClick,
+  isResizing,
 }: {
   date: Date;
   children: React.ReactNode;
   onClick?: () => void;
+  isResizing?: boolean;
 }) {
   const slotId = `${format(date, "yyyy-MM-dd")}-all-day`;
   const { isOver, setNodeRef } = useDroppable({
     id: slotId,
+    disabled: isResizing,
   });
 
   return (
@@ -149,9 +161,9 @@ function DroppableAllDaySlot({
       className={cn(
         "flex-1 min-w-[120px] border-r border-border last:border-r-0 p-1 min-h-[60px] relative",
         isToday(date) && "bg-primary/5 border-l-2 border-l-primary",
-        isOver && "bg-accent/20",
+        isOver && !isResizing && "bg-accent/20",
       )}
-      onClick={onClick}
+      onClick={!isResizing ? onClick : undefined}
     >
       {children}
     </div>
@@ -172,6 +184,7 @@ interface ResizableItemProps {
 function ResizableItem({ item, children, top, height, onResizeStart, isResizing, resizeHandle }: ResizableItemProps) {
   const isTask = 'category' in item;
   const isBeingResized = isResizing && resizeHandle?.itemId === item.id;
+  const isAnyResizing = isResizing; // Global resize state
   
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: item.id,
@@ -197,12 +210,16 @@ function ResizableItem({ item, children, top, height, onResizeStart, isResizing,
       ref={setNodeRef}
       style={style}
       {...attributes}
-      className="relative h-full group"
+      className={cn(
+        "relative h-full",
+        !isAnyResizing && "group"
+      )}
     >
       {/* Top resize handle */}
       <div
         className={cn(
-          'absolute top-0 left-0 right-0 h-1 z-30 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-opacity',
+          'absolute top-0 left-0 right-0 h-1 z-30 cursor-ns-resize opacity-0 transition-opacity',
+          !isAnyResizing && 'group-hover:opacity-100',
           isBeingResized && resizeHandle?.type === 'top' && 'opacity-100 bg-primary/20'
         )}
         onMouseDown={(e) => {
@@ -221,7 +238,8 @@ function ResizableItem({ item, children, top, height, onResizeStart, isResizing,
       {/* Bottom resize handle */}
       <div
         className={cn(
-          'absolute bottom-0 left-0 right-0 h-1 z-30 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-opacity',
+          'absolute bottom-0 left-0 right-0 h-1 z-30 cursor-ns-resize opacity-0 transition-opacity',
+          !isAnyResizing && 'group-hover:opacity-100',
           isBeingResized && resizeHandle?.type === 'bottom' && 'opacity-100 bg-primary/20'
         )}
         onMouseDown={(e) => {
@@ -729,6 +747,7 @@ className={cn(
                     <DroppableAllDaySlot
                       key={dateIndex}
                       date={date}
+                      isResizing={isResizing}
                       onClick={() => {
                         setCreateDialogData({
                           date,
@@ -740,7 +759,10 @@ className={cn(
 {allDayEvents.map((event) => (
                            <div
                                key={event.id}
-                               className="text-xs p-1 rounded cursor-move truncate hover:opacity-80"
+                               className={cn(
+                               "text-xs p-1 rounded cursor-move truncate",
+                               !isResizing && "hover:opacity-80"
+                             )}
                                style={{
                                  backgroundColor: event.color + "20",
                                  borderColor: event.color,
@@ -756,8 +778,9 @@ className={cn(
 {allDayTasks.map((task) => (
                            <div
                                key={task.id}
-                               className={cn(
-                                 "text-xs p-1 rounded border cursor-move truncate hover:opacity-80 flex items-center gap-1",
+className={cn(
+                                  "text-xs p-1 rounded border cursor-move truncate flex items-center gap-1",
+                                  !isResizing && "hover:opacity-80",
                                  task.category === "work" &&
                                    "bg-blue-100 text-blue-800 border-blue-200",
                                  task.category === "family" &&
@@ -866,6 +889,7 @@ className={cn(
                         key={hour}
                         date={date}
                         hour={hour}
+                        isResizing={isResizing}
                       >
                         <div className="flex w-full h-full">
                           {TIME_BLOCKS.map((block) => (
@@ -874,6 +898,7 @@ className={cn(
                               date={date}
                               hour={hour}
                               block={block}
+                              isResizing={isResizing}
                               onClick={() => {
                                 const time = `${hour.toString().padStart(2, "0")}:${block.label}`;
                                 setCreateDialogData({
@@ -930,7 +955,10 @@ className={cn(
                                     resizeHandle={resizeHandle}
                                   >
                                     <div
-                                      className="h-full text-xs p-1 rounded cursor-move truncate hover:opacity-80 overflow-hidden"
+                                      className={cn(
+                                       "h-full text-xs p-1 rounded cursor-move truncate overflow-hidden",
+                                       !isResizing && "hover:opacity-80"
+                                     )}
                                       style={{
                                         backgroundColor: event.color + "20",
                                         borderColor: event.color,
@@ -993,8 +1021,9 @@ className={cn(
                                   resizeHandle={resizeHandle}
                                 >
                                   <div
-                                    className={cn(
-                                      "h-full text-xs p-1 rounded border cursor-move truncate hover:opacity-80 overflow-hidden flex items-start gap-1",
+className={cn(
+                                       "h-full text-xs p-1 rounded border cursor-move truncate overflow-hidden flex items-start gap-1",
+                                       !isResizing && "hover:opacity-80",
                                       task.category === "work" &&
                                         "bg-blue-100 text-blue-800 border-blue-200",
                                       task.category === "family" &&

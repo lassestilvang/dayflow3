@@ -95,17 +95,19 @@ function DraggableItem({ item, children, isResizing }: DraggableItemProps & { is
   );
 }
 
-function DroppableHour({ hour, children }: { hour: number; children: React.ReactNode }) {
+function DroppableHour({ hour, children, isResizing }: { hour: number; children: React.ReactNode; isResizing?: boolean }) {
   const { isOver, setNodeRef } = useDroppable({
     id: `hour-${hour}`,
+    disabled: isResizing,
   });
 
   return (
     <div
       ref={setNodeRef}
       className={cn(
-        'flex border-b border-border group',
-        isOver && 'bg-accent/20'
+        'flex border-b border-border',
+        !isResizing && 'group',
+        isOver && !isResizing && 'bg-accent/20'
       )}
       style={{ height: `${HOUR_HEIGHT}px` }}
     >
@@ -114,34 +116,39 @@ function DroppableHour({ hour, children }: { hour: number; children: React.React
   );
 }
 
-function DroppableTimeBlock({ hour, block, children, onClick }: { 
+function DroppableTimeBlock({ hour, block, children, onClick, isResizing }: { 
   hour: number; 
   block: { start: number; end: number; label: string }; 
   children: React.ReactNode;
   onClick?: () => void;
+  isResizing?: boolean;
 }) {
   const blockId = `hour-${hour}-block-${block.label}`;
   const { isOver, setNodeRef } = useDroppable({
     id: blockId,
+    disabled: isResizing,
   });
 
   return (
     <div
       ref={setNodeRef}
       className={cn(
-        'flex-1 hover:bg-accent/60 cursor-pointer transition-colors',
-        isOver && 'bg-accent/40'
+        'flex-1 transition-colors',
+        !isResizing && 'hover:bg-accent/60 cursor-pointer',
+        isOver && !isResizing && 'bg-accent/40',
+        isResizing && 'cursor-not-allowed'
       )}
-      onClick={onClick}
+      onClick={!isResizing ? onClick : undefined}
     >
       {children}
     </div>
   );
 }
 
-function DroppableAllDay({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
+function DroppableAllDay({ children, onClick, isResizing }: { children: React.ReactNode; onClick?: () => void; isResizing?: boolean }) {
   const { isOver, setNodeRef } = useDroppable({
     id: 'all-day',
+    disabled: isResizing,
   });
 
   return (
@@ -149,9 +156,9 @@ function DroppableAllDay({ children, onClick }: { children: React.ReactNode; onC
       ref={setNodeRef}
       className={cn(
         'border-b border-border bg-muted/30',
-        isOver && 'bg-accent/20'
+        isOver && !isResizing && 'bg-accent/20'
       )}
-      onClick={onClick}
+      onClick={!isResizing ? onClick : undefined}
     >
       {children}
     </div>
@@ -171,6 +178,7 @@ interface ResizableItemProps {
 function ResizableItem({ item, children, top, height, onResizeStart, isResizing, resizeHandle }: ResizableItemProps) {
   const isTask = 'category' in item;
   const isBeingResized = isResizing && resizeHandle?.itemId === item.id;
+  const isAnyResizing = isResizing; // Global resize state
   
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: item.id,
@@ -194,12 +202,16 @@ function ResizableItem({ item, children, top, height, onResizeStart, isResizing,
       ref={setNodeRef}
       style={style}
       {...attributes}
-      className="relative h-full group"
+      className={cn(
+        "relative h-full",
+        !isAnyResizing && "group"
+      )}
     >
       {/* Top resize handle */}
       <div
         className={cn(
-          'absolute top-0 left-0 right-0 h-2 z-30 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-opacity',
+          'absolute top-0 left-0 right-0 h-2 z-30 cursor-ns-resize opacity-0 transition-opacity',
+          !isAnyResizing && 'group-hover:opacity-100',
           isBeingResized && resizeHandle?.type === 'top' && 'opacity-100 bg-primary/20'
         )}
         onMouseDown={(e) => {
@@ -218,7 +230,8 @@ function ResizableItem({ item, children, top, height, onResizeStart, isResizing,
       {/* Bottom resize handle */}
       <div
         className={cn(
-          'absolute bottom-0 left-0 right-0 h-2 z-30 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-opacity',
+          'absolute bottom-0 left-0 right-0 h-2 z-30 cursor-ns-resize opacity-0 transition-opacity',
+          !isAnyResizing && 'group-hover:opacity-100',
           isBeingResized && resizeHandle?.type === 'bottom' && 'opacity-100 bg-primary/20'
         )}
         onMouseDown={(e) => {
@@ -633,12 +646,14 @@ return (
       <div ref={calendarContainerRef} className="h-full overflow-auto bg-background relative">
         <div className="max-w-4xl mx-auto relative">
           <div className="sticky top-0 z-30 bg-background">
-            <DroppableAllDay onClick={() => {
-              setCreateDialogData({
-                date: currentDate,
-                allDay: true,
-              });
-            }}>
+            <DroppableAllDay 
+              isResizing={isResizing}
+              onClick={() => {
+                setCreateDialogData({
+                  date: currentDate,
+                  allDay: true,
+                });
+              }}>
               <div className="flex">
                 <div className="w-20 py-2 pr-4 text-right text-sm font-medium text-muted-foreground sticky left-0 bg-background">
                   All day
@@ -653,7 +668,10 @@ return (
                             e.stopPropagation();
                             setEditingEvent(event);
                           }}
-                          className="text-xs p-1 rounded cursor-move truncate hover:opacity-80"
+                          className={cn(
+                            "text-xs p-1 rounded cursor-move truncate",
+                            !isResizing && "hover:opacity-80"
+                          )}
                           style={{
                             backgroundColor: event.color + "20",
                             borderColor: event.color,
@@ -672,7 +690,8 @@ return (
                             setEditingTask(task);
                           }}
                           className={cn(
-                            'p-2 rounded-lg border cursor-move text-sm hover:opacity-80 inline-block mr-2 mb-2',
+                            'p-2 rounded-lg border cursor-move text-sm inline-block mr-2 mb-2',
+                            !isResizing && 'hover:opacity-80',
                             task.category === 'work' && 'bg-blue-100 text-blue-800 border-blue-200',
                             task.category === 'family' && 'bg-green-100 text-green-800 border-green-200',
                             task.category === 'personal' && 'bg-orange-100 text-orange-800 border-orange-200',
@@ -728,7 +747,7 @@ return (
             )}
             {/* Time labels and drop zones */}
             {HOURS.map((hour) => (
-              <DroppableHour key={hour} hour={hour}>
+              <DroppableHour key={hour} hour={hour} isResizing={isResizing}>
                 {/* Time label */}
 <div className="w-20 py-4 pr-4 text-right text-sm text-muted-foreground font-medium sticky left-0 z-20">
                   {formatTime(createHourDate(hour), settings)}
@@ -741,6 +760,7 @@ return (
                       key={`${hour}-${block.label}`}
                       hour={hour}
                       block={block}
+                      isResizing={isResizing}
                       onClick={() => handleTimeSlotClick(hour, block.start)}
                     >
                       {/* Empty slot indicator */}
@@ -789,7 +809,10 @@ return (
                             e.stopPropagation();
                             setEditingEvent(event);
                           }}
-                          className="h-full p-2 rounded-lg border cursor-move text-sm hover:opacity-80 overflow-hidden"
+                          className={cn(
+                            "h-full p-2 rounded-lg border cursor-move text-sm overflow-hidden",
+                            !isResizing && "hover:opacity-80"
+                          )}
                           style={{ 
                             backgroundColor: event.color + '20', 
                             borderColor: event.color,
@@ -845,7 +868,8 @@ return (
                             setEditingTask(task);
                           }}
                           className={cn(
-                            'h-full p-2 rounded-lg border cursor-move text-sm hover:opacity-80 overflow-hidden',
+                            'h-full p-2 rounded-lg border cursor-move text-sm overflow-hidden',
+                            !isResizing && 'hover:opacity-80',
                             task.category === 'work' && 'bg-blue-100 text-blue-800 border-blue-200',
                             task.category === 'family' && 'bg-green-100 text-green-800 border-green-200',
                             task.category === 'personal' && 'bg-orange-100 text-orange-800 border-orange-200',
