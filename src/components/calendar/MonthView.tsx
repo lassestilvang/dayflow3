@@ -599,11 +599,11 @@ export function MonthView() {
       {/* Drag overlay rendered at root level */}
       <DragOverlay>
         {draggedItem && (
-          <div className="drag-overlay-content text-xs p-1 rounded bg-background max-w-48 border-none outline-none shadow-none ring-0 ring-offset-0">
+          <div className="drag-overlay-content text-xs bg-background max-w-48 border-none outline-none shadow-none ring-0 ring-offset-0">
             {"category" in draggedItem ? (
               <div
                 className={cn(
-                  "text-xs p-1 rounded truncate flex items-center gap-1 h-6",
+                  "text-xs p-1 rounded truncate flex items-center gap-1 h-6 ml-10",
                   draggedItem.category === "work" &&
                     "bg-blue-100 text-blue-800",
                   draggedItem.category === "family" &&
