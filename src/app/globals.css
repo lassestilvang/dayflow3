@@ -134,3 +134,24 @@ body.dragging * {
   border: none !important;
   outline: none !important;
 }
+
+/* Hide the default dnd-kit drag placeholder */
+[data-dnd-kit-draggable] {
+  /* Hide the original element during drag to prevent duplicate display */
+}
+
+/* Hide any default placeholder elements that dnd-kit might create */
+[data-dnd-kit-placeholder] {
+  display: none !important;
+}
+
+/* Hide the original draggable element when it's being dragged */
+[data-dnd-kit-draggable][data-dnd-kit-dragging] {
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Additional styles to hide ghost elements during drag */
+body.dragging [data-dnd-kit-draggable]:not([data-dnd-kit-dragging]) {
+  opacity: 0.3 !important;
+}
