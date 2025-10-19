@@ -128,8 +128,8 @@ function DroppableTimeBlock({ hour, block, children, onClick }: {
     <div
       ref={setNodeRef}
       className={cn(
-        'flex-1 hover:bg-accent/30 cursor-pointer transition-colors',
-        isOver && 'bg-accent/20'
+        'flex-1 hover:bg-accent/60 cursor-pointer transition-colors',
+        isOver && 'bg-accent/40'
       )}
       onClick={onClick}
     >
