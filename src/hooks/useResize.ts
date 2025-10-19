@@ -23,6 +23,7 @@ export function useResize() {
   const [startY, setStartY] = useState(0);
   const [originalTop, setOriginalTop] = useState(0);
   const [originalHeight, setOriginalHeight] = useState(0);
+  const [finalDelta, setFinalDelta] = useState(0);
   const containerRef = useRef<HTMLElement>(null);
 
   const HOUR_HEIGHT = 80; // Should match the HOUR_HEIGHT in calendar components

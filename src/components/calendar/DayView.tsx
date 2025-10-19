@@ -90,9 +90,7 @@ function DraggableItem({ item, children, isResizing }: DraggableItemProps & { is
       {...attributes}
       className="h-full"
     >
-      <div {...listeners} className="h-full relative z-20">
-        {children}
-      </div>
+      {children}
     </div>
   );
 }
@@ -174,8 +172,30 @@ function ResizableItem({ item, children, top, height, onResizeStart, isResizing,
   const isTask = 'category' in item;
   const isBeingResized = isResizing && resizeHandle?.itemId === item.id;
   
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: item.id,
+    data: {
+      type: isTask ? 'task' : 'event',
+      data: item,
+    },
+    disabled: isResizing, // Disable dragging when resizing
+  });
+
+  const style = transform ? {
+    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+    opacity: isDragging ? 0.5 : 1,
+    transition: 'none',
+  } : {
+    transition: 'none',
+  };
+  
   return (
-    <div className="relative h-full group">
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      className="relative h-full group"
+    >
       {/* Top resize handle */}
       <div
         className={cn(
@@ -190,8 +210,8 @@ function ResizableItem({ item, children, top, height, onResizeStart, isResizing,
         }}
       />
       
-      {/* Main content */}
-      <div className="h-full">
+      {/* Main content with drag listeners */}
+      <div {...listeners} className="h-full relative z-20">
         {children}
       </div>
       
@@ -627,26 +647,21 @@ return (
                 <div className="flex-1 p-2">
                   <div className="space-y-2">
                     {/* All-day events */}
-                    {allDayEvents.map((event) => (
-                      <DraggableItem key={event.id} item={event} isResizing={isResizing && resizeHandle?.itemId === event.id}>
-                        <div
+{allDayEvents.map((event) => (
+                      <div
+                          key={event.id}
                           onClick={(e) => {
                             e.stopPropagation();
                             setEditingEvent(event);
                           }}
-                          className="p-2 rounded-lg border cursor-move text-sm hover:opacity-80 inline-block mr-2 mb-2"
-                          style={{ 
-                            backgroundColor: event.color + '20', 
+                          className="text-xs p-1 rounded cursor-move truncate hover:opacity-80"
+                          style={{
+                            backgroundColor: event.color + "20",
                             borderColor: event.color,
-                            color: event.color 
                           }}
                         >
-                          <div className="font-medium">{event.title}</div>
-                          {event.description && (
-                            <div className="text-xs opacity-75 mt-1">{event.description}</div>
-                          )}
+                          {event.title}
                         </div>
-                      </DraggableItem>
                     ))}
                     
                     {/* All-day tasks */}
@@ -755,8 +770,7 @@ return (
                        width: '100%',
                      }}
                   >
-                    <DraggableItem item={event} isResizing={isResizing && resizeHandle?.itemId === event.id}>
-                      <ResizableItem
+                    <ResizableItem
                         item={event}
                         top={top}
                         height={height}
@@ -792,7 +806,6 @@ return (
                           </div>
                         </div>
                       </ResizableItem>
-                    </DraggableItem>
                   </div>
                 );
               })}
@@ -812,8 +825,7 @@ return (
                        width: '100%',
                      }}
                   >
-                    <DraggableItem item={task} isResizing={isResizing && resizeHandle?.itemId === task.id}>
-                      <ResizableItem
+                    <ResizableItem
                         item={task}
                         top={top}
                         height={height}
@@ -858,7 +870,6 @@ return (
                           )}
                         </div>
                       </ResizableItem>
-                    </DraggableItem>
                   </div>
                 );
               })}
