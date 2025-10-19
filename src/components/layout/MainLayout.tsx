@@ -2,7 +2,7 @@
 
 import { ReactNode, useState, useEffect } from 'react';
 import { DndContext, 
-         closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+         pointerWithin, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -168,7 +168,7 @@ export function MainLayout({ children }: MainLayoutProps) {
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCenter}
+      collisionDetection={pointerWithin}
     >
       <div className="h-screen flex bg-background">
         {/* Sidebar */}
