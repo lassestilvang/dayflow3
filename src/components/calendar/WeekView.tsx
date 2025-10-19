@@ -244,7 +244,7 @@ export function WeekView() {
   const [draggedItem, setDraggedItem] = useState<Task | Event | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [optimisticItems, setOptimisticItems] = useState<Map<string, Task | Event>>(new Map());
-  const { isResizing, resizeHandle, startY, startResize, handleMouseMove, stopResize, calculateResizeResult } = useResize();
+  const { isResizing, resizeHandle, startY, finalDelta, startResize, handleMouseMove, stopResize, calculateResizeResult } = useResize();
   const calendarContainerRef = useRef<HTMLDivElement>(null);
 
   const weekDates = getWeekDates();
@@ -371,9 +371,8 @@ export function WeekView() {
 
     const handleGlobalMouseUp = async () => {
       if (resizeHandle) {
-        const deltaMinutes = handleMouseMove({ clientY: startY } as MouseEvent);
-        if (deltaMinutes !== undefined) {
-          const result = calculateResizeResult(deltaMinutes);
+        if (finalDelta !== undefined) {
+          const result = calculateResizeResult(finalDelta);
           
           // Apply the actual update
           if (resizeHandle.itemType === 'event') {
@@ -438,7 +437,7 @@ export function WeekView() {
       document.removeEventListener('mousemove', handleGlobalMouseMove);
       document.removeEventListener('mouseup', handleGlobalMouseUp);
     };
-  }, [isResizing, resizeHandle, handleMouseMove, calculateResizeResult, stopResize, updateEvent, updateTask, startY]);
+  }, [isResizing, resizeHandle, handleMouseMove, calculateResizeResult, stopResize, updateEvent, updateTask, startY, finalDelta]);
 
   useDndMonitor({
     onDragStart: (event) => {

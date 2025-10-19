@@ -62,6 +62,9 @@ export function useResize() {
     // Snap to 15-minute intervals
     const snappedDelta = Math.round(minutesDelta / 15) * 15;
     
+    // Store the final delta for use in mouse up
+    setFinalDelta(snappedDelta);
+    
     return snappedDelta;
   }, [isResizing, resizeHandle, startY, HOUR_HEIGHT]);
 
@@ -71,6 +74,7 @@ export function useResize() {
     setStartY(0);
     setOriginalTop(0);
     setOriginalHeight(0);
+    setFinalDelta(0);
     containerRef.current = null;
     
     // Remove global styles
@@ -151,6 +155,7 @@ export function useResize() {
     isResizing,
     resizeHandle,
     startY,
+    finalDelta,
     startResize,
     handleMouseMove,
     stopResize,
