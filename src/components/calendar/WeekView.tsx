@@ -128,8 +128,7 @@ function DroppableTimeBlock({
       className={cn(
         'flex-1 transition-colors',
         !isResizing && 'hover:bg-accent/60 cursor-pointer',
-        isOver && !isResizing && 'bg-accent/40',
-        isResizing && 'cursor-not-allowed'
+        isOver && !isResizing && 'bg-accent/40'
       )}
       onClick={!isResizing ? onClick : undefined}
     >

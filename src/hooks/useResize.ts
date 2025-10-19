@@ -50,7 +50,13 @@ export function useResize() {
     
     // Add global styles to prevent text selection and cursor issues
     document.body.style.userSelect = 'none';
-    document.body.style.cursor = handle.type === 'top' ? 'ns-resize' : 'ns-resize';
+    document.body.style.cursor = 'ns-resize';
+    
+    // Add a global style to ensure resize cursor takes precedence
+    const style = document.createElement('style');
+    style.id = 'resize-cursor-override';
+    style.textContent = '* { cursor: ns-resize !important; }';
+    document.head.appendChild(style);
   }, []);
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
@@ -80,6 +86,12 @@ export function useResize() {
     // Remove global styles
     document.body.style.userSelect = '';
     document.body.style.cursor = '';
+    
+    // Remove the resize cursor override style
+    const style = document.getElementById('resize-cursor-override');
+    if (style) {
+      document.head.removeChild(style);
+    }
   }, []);
 
   const calculateResizeResult = useCallback((deltaMinutes: number): ResizeResult => {
