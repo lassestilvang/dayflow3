@@ -352,6 +352,26 @@ export function WeekView() {
     return () => clearInterval(interval);
   }, []);
 
+  // Auto-scroll to current time on initial load and when week changes
+  useEffect(() => {
+    if (calendarContainerRef.current) {
+      const now = new Date();
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
+      
+      // Calculate the scroll position to center current time
+      const currentTimePosition = currentHour * HOUR_HEIGHT + currentMinute * (HOUR_HEIGHT / 60);
+      const containerHeight = calendarContainerRef.current.clientHeight;
+      const scrollPosition = currentTimePosition - (containerHeight / 2);
+      
+      // Scroll to center the current time
+      calendarContainerRef.current.scrollTo({
+        top: Math.max(0, scrollPosition),
+        behavior: 'smooth'
+      });
+    }
+  }, [weekDates]);
+
   // Handle mouse move for resizing
   useEffect(() => {
     if (!isResizing) return;
