@@ -1,7 +1,7 @@
 "use client";
 
-import { format, isToday, isSameDay, setHours } from "date-fns";
-import { useState, useEffect } from "react";
+import { format, isToday, isSameDay } from "date-fns";
+import { useState, useEffect, useRef } from "react";
 import { useDraggable, useDroppable, useDndMonitor } from "@dnd-kit/core";
 import {
   useCalendarStore,
@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { Task, Event } from "@/types";
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatTime } from "@/lib/dateUtils";
+import { useResize } from "@/hooks/useResize";
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const HOUR_HEIGHT = 60; // pixels per hour
@@ -191,6 +192,49 @@ function DroppableAllDaySlot({
   );
 }
 
+// ResizableItem component for WeekView (same as DayView but adapted for week view)
+interface ResizableItemProps {
+  item: Task | Event;
+  children: React.ReactNode;
+  top: number;
+  height: number;
+  onResizeStart: (e: React.MouseEvent, handle: 'top' | 'bottom') => void;
+  isResizing: boolean;
+  resizeHandle?: { type: 'top' | 'bottom'; itemId: string } | null;
+}
+
+function ResizableItem({ item, children, top, height, onResizeStart, isResizing, resizeHandle }: ResizableItemProps) {
+  const isTask = 'category' in item;
+  const isBeingResized = isResizing && resizeHandle?.itemId === item.id;
+  
+  return (
+    <div className="relative h-full group">
+      {/* Top resize handle */}
+      <div
+        className={cn(
+          'absolute top-0 left-0 right-0 h-1 z-30 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-opacity',
+          isBeingResized && resizeHandle?.type === 'top' && 'opacity-100 bg-primary/20'
+        )}
+        onMouseDown={(e) => onResizeStart(e, 'top')}
+      />
+      
+      {/* Main content */}
+      <div className="h-full">
+        {children}
+      </div>
+      
+      {/* Bottom resize handle */}
+      <div
+        className={cn(
+          'absolute bottom-0 left-0 right-0 h-1 z-30 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-opacity',
+          isBeingResized && resizeHandle?.type === 'bottom' && 'opacity-100 bg-primary/20'
+        )}
+        onMouseDown={(e) => onResizeStart(e, 'bottom')}
+      />
+    </div>
+  );
+}
+
 export function WeekView() {
   const { getWeekDates } = useCalendarStore();
   const { getEventsForDate, updateEvent } = useEventStore();
@@ -200,6 +244,8 @@ export function WeekView() {
   const [draggedItem, setDraggedItem] = useState<Task | Event | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [optimisticItems, setOptimisticItems] = useState<Map<string, Task | Event>>(new Map());
+  const { isResizing, resizeHandle, startY, startResize, handleMouseMove, stopResize, calculateResizeResult } = useResize();
+  const calendarContainerRef = useRef<HTMLDivElement>(null);
 
   const weekDates = getWeekDates();
 
@@ -288,6 +334,111 @@ export function WeekView() {
 
     return () => clearInterval(interval);
   }, []);
+
+  // Handle mouse move for resizing
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      const deltaMinutes = handleMouseMove(e);
+      if (deltaMinutes !== undefined && resizeHandle) {
+        const result = calculateResizeResult(deltaMinutes);
+        
+        // Apply optimistic update
+        if (resizeHandle.itemType === 'event') {
+          const event = resizeHandle.originalItem as Event;
+          if (result.newStartTime && result.newEndTime) {
+            const optimisticEvent = {
+              ...event,
+              startTime: result.newStartTime,
+              endTime: result.newEndTime,
+              updatedAt: new Date()
+            } as Event;
+            setOptimisticItems(prev => new Map(prev).set(event.id, optimisticEvent));
+          }
+        } else {
+          const task = resizeHandle.originalItem as Task;
+          const optimisticTask = {
+            ...task,
+            ...(result.newScheduledTime && { scheduledTime: result.newScheduledTime }),
+            ...(result.newDuration && { duration: result.newDuration }),
+            updatedAt: new Date()
+          } as Task;
+          setOptimisticItems(prev => new Map(prev).set(task.id, optimisticTask));
+        }
+      }
+    };
+
+    const handleGlobalMouseUp = async () => {
+      if (resizeHandle) {
+        const deltaMinutes = handleMouseMove({ clientY: startY } as MouseEvent);
+        if (deltaMinutes !== undefined) {
+          const result = calculateResizeResult(deltaMinutes);
+          
+          // Apply the actual update
+          if (resizeHandle.itemType === 'event') {
+            const event = resizeHandle.originalItem as Event;
+            if (result.newStartTime && result.newEndTime) {
+              try {
+                await updateEvent(event.id, {
+                  startTime: result.newStartTime,
+                  endTime: result.newEndTime,
+                  updatedAt: new Date()
+                });
+                // Remove optimistic update after successful sync
+                setOptimisticItems(prev => {
+                  const next = new Map(prev);
+                  next.delete(event.id);
+                  return next;
+                });
+              } catch (error) {
+                console.error('Error updating event:', error);
+                // Remove optimistic update on error
+                setOptimisticItems(prev => {
+                  const next = new Map(prev);
+                  next.delete(event.id);
+                  return next;
+                });
+              }
+            }
+          } else {
+            const task = resizeHandle.originalItem as Task;
+            try {
+              await updateTask(task.id, {
+                ...(result.newScheduledTime && { scheduledTime: result.newScheduledTime }),
+                ...(result.newDuration && { duration: result.newDuration }),
+                updatedAt: new Date()
+              });
+              // Remove optimistic update after successful sync
+              setOptimisticItems(prev => {
+                const next = new Map(prev);
+                next.delete(task.id);
+                return next;
+              });
+            } catch (error) {
+              console.error('Error updating task:', error);
+              // Remove optimistic update on error
+              setOptimisticItems(prev => {
+                const next = new Map(prev);
+                next.delete(task.id);
+                return next;
+              });
+            }
+          }
+        }
+      }
+      
+      stopResize();
+    };
+
+    document.addEventListener('mousemove', handleGlobalMouseMove);
+    document.addEventListener('mouseup', handleGlobalMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleGlobalMouseMove);
+      document.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, [isResizing, resizeHandle, handleMouseMove, calculateResizeResult, stopResize, updateEvent, updateTask, startY]);
 
   useDndMonitor({
     onDragStart: (event) => {
@@ -526,7 +677,7 @@ export function WeekView() {
 
   return (
     <>
-      <div className="h-full overflow-auto bg-background">
+      <div ref={calendarContainerRef} className="h-full overflow-auto bg-background">
         <div className="relative min-w-[800px]">
           {/* Sticky header container */}
           <div className="sticky top-0 z-30 bg-background">
@@ -770,101 +921,133 @@ className={cn(
                                }}
                              >
                                <DraggableItem item={event}>
-                                 <div
-                                   className="h-full text-xs p-1 rounded cursor-move truncate hover:opacity-80 overflow-hidden"
-                                   style={{
-                                     backgroundColor: event.color + "20",
-                                     borderColor: event.color,
+                                 <ResizableItem
+                                   item={event}
+                                   top={top}
+                                   height={height}
+                                   onResizeStart={(e, handle) => {
+                                     startResize(e, {
+                                       type: handle,
+                                       itemId: event.id,
+                                       itemType: 'event',
+                                       originalItem: event
+                                     }, calendarContainerRef.current!, top, height);
                                    }}
-                                   onClick={(e) => {
-                                     e.stopPropagation();
-                                     setEditingEvent(event);
-                                   }}
+                                   isResizing={isResizing}
+                                   resizeHandle={resizeHandle}
                                  >
-                                   <div className="font-medium truncate">
-                                     {event.title}
+                                   <div
+                                     className="h-full text-xs p-1 rounded cursor-move truncate hover:opacity-80 overflow-hidden"
+                                     style={{
+                                       backgroundColor: event.color + "20",
+                                       borderColor: event.color,
+                                     }}
+                                     onClick={(e) => {
+                                       e.stopPropagation();
+                                       setEditingEvent(event);
+                                     }}
+                                   >
+                                     <div className="font-medium truncate">
+                                       {event.title}
+                                     </div>
+                                     <div className="opacity-75">
+                                       {formatTime(
+                                         new Date(event.startTime),
+                                         settings,
+                                       )}{" "}
+                                       -{" "}
+                                       {formatTime(
+                                         new Date(event.endTime),
+                                         settings,
+                                       )}
+                                     </div>
                                    </div>
-                                   <div className="opacity-75">
-                                     {formatTime(
-                                       new Date(event.startTime),
-                                       settings,
-                                     )}{" "}
-                                     -{" "}
-                                     {formatTime(
-                                       new Date(event.endTime),
-                                       settings,
-                                     )}
-                                   </div>
-                                 </div>
+                                 </ResizableItem>
                                </DraggableItem>
                              </div>
                            );
                          })}
 
-                      {/* Positioned tasks for this date - rendered outside the hour slots */}
-                      {getItemsForDate(date).tasks
-                        .filter((task) => !task.allDay && task.scheduledTime)
-                        .map((task) => {
-                          const top = getTaskTopPosition(task);
-                          const height = getItemHeight(getTaskDuration(task));
+{/* Positioned tasks for this date - rendered outside the hour slots */}
+                       {getItemsForDate(date).tasks
+                         .filter((task) => !task.allDay && task.scheduledTime)
+                         .map((task) => {
+                           const top = getTaskTopPosition(task);
+                           const height = getItemHeight(getTaskDuration(task));
 
-                          return (
-                            <div
-                              key={`${task.id}-${task.completed ? "completed" : "incomplete"}`}
-                              className="absolute z-20 pointer-events-auto"
-                              style={{
-                                top: `${top}px`,
-                                height: `${height}px`,
-                                width: "100%",
-                              }}
-                            >
-                              <DraggableItem item={task}>
-                                <div
-                                  className={cn(
-                                    "h-full text-xs p-1 rounded border cursor-move truncate hover:opacity-80 overflow-hidden flex items-start gap-1",
-                                    task.category === "work" &&
-                                      "bg-blue-100 text-blue-800 border-blue-200",
-                                    task.category === "family" &&
-                                      "bg-green-100 text-green-800 border-green-200",
-                                    task.category === "personal" &&
-                                      "bg-orange-100 text-orange-800 border-orange-200",
-                                    task.category === "travel" &&
-                                      "bg-purple-100 text-purple-800 border-purple-200",
-                                    task.category === "inbox" &&
-                                      "bg-gray-100 text-gray-800 border-gray-200",
-                                    task.completed && "opacity-60 line-through",
-                                  )}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditingTask(task);
-                                  }}
-                                >
-                                  <Checkbox
-                                    checked={task.completed}
-                                    onCheckedChange={(checked) =>
-                                      handleTaskCompleteToggle(
-                                        task.id,
-                                        checked as boolean,
-                                        {
-                                          stopPropagation: () => {},
-                                        } as React.MouseEvent,
-                                      )
-                                    }
-                                    onClick={(e) =>
-                                      handleTaskCompleteToggle(
-                                        task.id,
-                                        !task.completed,
-                                        e,
-                                      )
-                                    }
-                                    className="size-3 flex-shrink-0 mt-0.5"
-                                  />
-                                  <span className="truncate">{task.title}</span>
-                                </div>
-                              </DraggableItem>
-                            </div>
-                          );
-                        })}
+                           return (
+                             <div
+                               key={`${task.id}-${task.completed ? "completed" : "incomplete"}`}
+                               className="absolute z-20 pointer-events-auto"
+                               style={{
+                                 top: `${top}px`,
+                                 height: `${height}px`,
+                                 width: "100%",
+                               }}
+                             >
+                               <DraggableItem item={task}>
+                                 <ResizableItem
+                                   item={task}
+                                   top={top}
+                                   height={height}
+                                   onResizeStart={(e, handle) => {
+                                     startResize(e, {
+                                       type: handle,
+                                       itemId: task.id,
+                                       itemType: 'task',
+                                       originalItem: task
+                                     }, calendarContainerRef.current!, top, height);
+                                   }}
+                                   isResizing={isResizing}
+                                   resizeHandle={resizeHandle}
+                                 >
+                                   <div
+                                     className={cn(
+                                       "h-full text-xs p-1 rounded border cursor-move truncate hover:opacity-80 overflow-hidden flex items-start gap-1",
+                                       task.category === "work" &&
+                                         "bg-blue-100 text-blue-800 border-blue-200",
+                                       task.category === "family" &&
+                                         "bg-green-100 text-green-800 border-green-200",
+                                       task.category === "personal" &&
+                                         "bg-orange-100 text-orange-800 border-orange-200",
+                                       task.category === "travel" &&
+                                         "bg-purple-100 text-purple-800 border-purple-200",
+                                       task.category === "inbox" &&
+                                         "bg-gray-100 text-gray-800 border-gray-200",
+                                       task.completed && "opacity-60 line-through",
+                                     )}
+                                     onClick={(e) => {
+                                       e.stopPropagation();
+                                       setEditingTask(task);
+                                     }}
+                                   >
+                                     <Checkbox
+                                       checked={task.completed}
+                                       onCheckedChange={(checked) =>
+                                         handleTaskCompleteToggle(
+                                           task.id,
+                                           checked as boolean,
+                                           {
+                                             stopPropagation: () => {},
+                                           } as React.MouseEvent,
+                                         )
+                                       }
+                                       onClick={(e) =>
+                                         handleTaskCompleteToggle(
+                                           task.id,
+                                           !task.completed,
+                                           e,
+                                         )
+                                       }
+                                       className="size-3 flex-shrink-0 mt-0.5"
+                                     />
+                                     <span className="truncate">{task.title}</span>
+                                   </div>
+                                 </ResizableItem>
+                               </DraggableItem>
+                             </div>
+                           );
+                         })}
                     </div>
                   </div>
                 </div>
