@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 interface UserSettings {
   dateFormat: string;
   timeFormat: '12h' | '24h';
+  weekStart: 'sunday' | 'monday';
 }
 
 interface SettingsModalProps {
@@ -83,6 +84,24 @@ export function SettingsModal({ isOpen, onOpenChange, settings, onSave }: Settin
             <SelectContent>
               <SelectItem value="12h">12-hour (3:00 PM)</SelectItem>
               <SelectItem value="24h">24-hour (15:00)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="week-start">Week Start</Label>
+          <Select
+            value={localSettings.weekStart}
+            onValueChange={(value: 'sunday' | 'monday') => 
+              setLocalSettings(prev => ({ ...prev, weekStart: value }))
+            }
+          >
+            <SelectTrigger id="week-start">
+              <SelectValue placeholder="Select week start" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="sunday">Sunday</SelectItem>
+              <SelectItem value="monday">Monday</SelectItem>
             </SelectContent>
           </Select>
         </div>

@@ -539,6 +539,8 @@ export function FullCalendarComponent({
           // Remove hover effect
           info.el.style.cursor = "";
         }}
+        // Week start setting
+        firstDay={settings.weekStart === 'monday' ? 1 : 0}
         // Custom formatters based on user settings
         slotLabelFormat={
           settings.timeFormat === "12h"

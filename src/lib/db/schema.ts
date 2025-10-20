@@ -4,6 +4,7 @@ export const taskCategoryEnum = pgEnum('task_category', ['inbox', 'work', 'famil
 export const taskPriorityEnum = pgEnum('task_priority', ['low', 'medium', 'high']);
 export const eventTypeEnum = pgEnum('event_type', ['meeting', 'appointment', 'reminder', 'deadline']);
 export const timeFormatEnum = pgEnum('time_format', ['12h', '24h']);
+export const weekStartEnum = pgEnum('week_start', ['sunday', 'monday']);
 
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -13,6 +14,7 @@ export const users = pgTable('users', {
   password: text('password'),
   dateFormat: text('date_format').default('MMM d, yyyy'),
   timeFormat: timeFormatEnum('time_format').default('12h'),
+  weekStart: weekStartEnum('week_start').default('sunday'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });

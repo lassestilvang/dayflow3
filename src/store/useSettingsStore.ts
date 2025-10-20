@@ -4,6 +4,7 @@ import { persist } from 'zustand/middleware';
 interface UserSettings {
   dateFormat: string;
   timeFormat: '12h' | '24h';
+  weekStart: 'sunday' | 'monday';
 }
 
 interface SettingsStore {
@@ -17,6 +18,7 @@ interface SettingsStore {
 const DEFAULT_SETTINGS: UserSettings = {
   dateFormat: 'MMM d, yyyy',
   timeFormat: '24h',
+  weekStart: 'sunday',
 };
 
 export const useSettingsStore = create<SettingsStore>()(

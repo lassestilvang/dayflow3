@@ -17,6 +17,7 @@ export async function GET() {
       .select({
         dateFormat: users.dateFormat,
         timeFormat: users.timeFormat,
+        weekStart: users.weekStart,
       })
       .from(users)
       .where(eq(users.id, session.user.id))
@@ -29,6 +30,7 @@ export async function GET() {
     return NextResponse.json({
       dateFormat: user[0].dateFormat || 'MMM d, yyyy',
       timeFormat: user[0].timeFormat || '12h',
+      weekStart: user[0].weekStart || 'sunday',
     });
   } catch (error) {
     console.error('Error fetching settings:', error);
@@ -45,9 +47,9 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { dateFormat, timeFormat } = body;
+    const { dateFormat, timeFormat, weekStart } = body;
 
-    if (!dateFormat || !timeFormat) {
+    if (!dateFormat || !timeFormat || !weekStart) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -56,6 +58,7 @@ export async function PUT(request: NextRequest) {
       .set({
         dateFormat,
         timeFormat,
+        weekStart,
         updatedAt: new Date(),
       })
       .where(eq(users.id, session.user.id));
