@@ -1,6 +1,6 @@
-'use client';
+'use client'; 
 
-import { ReactNode, useState, useEffect } from 'react';
+import React, { ReactNode, useState, useEffect, useRef, cloneElement } from 'react';
 import { DndContext, 
          pointerWithin, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { Sidebar } from './Sidebar';
@@ -30,6 +30,7 @@ export function MainLayout({ children }: MainLayoutProps) {
   const { updateEvent, addEvent, deleteEvent } = useEventStore();
   const [showUnifiedDialog, setShowUnifiedDialog] = useState(false);
   const [initialFormData, setInitialFormData] = useState<{ type: 'task' | 'event'; data: Partial<Task> | Partial<Event> } | null>(null);
+  const sidebarRef = useRef<HTMLDivElement>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -180,7 +181,7 @@ export function MainLayout({ children }: MainLayoutProps) {
             'h-full transition-all duration-300',
             sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
           )}>
-            <Sidebar />
+            <Sidebar ref={sidebarRef} />
           </div>
         </div>
 
@@ -189,9 +190,12 @@ export function MainLayout({ children }: MainLayoutProps) {
           {/* Header */}
           <Header />
           
-          {/* Main Content */}
+{/* Main Content */}
           <main className="flex-1 overflow-auto">
-            {children}
+            {React.isValidElement(children) 
+              ? React.cloneElement(children, { sidebarRef } as any)
+              : children
+            }
           </main>
         </div>
       </div>

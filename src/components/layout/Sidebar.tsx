@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, forwardRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { startOfDay } from 'date-fns';
 import { 
@@ -50,8 +50,6 @@ function DraggableTask({ task, children }: DraggableTaskProps) {
     },
   });
 
-  
-
   const style = transform ? {
     transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
     opacity: isDragging ? 0.5 : 1,
@@ -63,13 +61,16 @@ function DraggableTask({ task, children }: DraggableTaskProps) {
       style={style}
       {...listeners}
       {...attributes}
+      className="fc-draggable-item"
+      data-task-id={task.id}
+      data-item-type="task"
     >
       {children}
     </div>
   );
 }
 
-export function Sidebar() {
+export const Sidebar = forwardRef<HTMLDivElement, {}>((props, ref) => {
   const { data: session } = useSession();
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
   const [expandedCompletedCategories, setExpandedCompletedCategories] = useState<string[]>([]);
@@ -226,7 +227,7 @@ export function Sidebar() {
   };
 
   return (
-    <div className="w-64 bg-background border-r border-border h-full flex flex-col">
+    <div ref={ref} className="w-64 bg-background border-r border-border h-full flex flex-col">
       {/* Header */}
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between">
@@ -482,4 +483,6 @@ export function Sidebar() {
       />
     </div>
   );
-}
+});
+
+Sidebar.displayName = 'Sidebar';

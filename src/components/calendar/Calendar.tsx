@@ -1,21 +1,14 @@
 'use client';
 
 import { useCalendarStore } from '@/store';
-import { WeekView } from './WeekView';
-import { DayView } from './DayView';
-import { MonthView } from './MonthView';
+import { FullCalendarComponent } from './FullCalendar';
 
-export function Calendar() {
+interface CalendarProps {
+  sidebarRef?: React.RefObject<HTMLDivElement>;
+}
+
+export function Calendar({ sidebarRef }: CalendarProps) {
   const { view } = useCalendarStore();
 
-  switch (view) {
-    case 'day':
-      return <DayView />;
-    case 'week':
-      return <WeekView />;
-    case 'month':
-      return <MonthView />;
-    default:
-      return <WeekView />;
-  }
+  return <FullCalendarComponent sidebarRef={sidebarRef} />;
 }
