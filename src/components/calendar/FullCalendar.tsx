@@ -11,8 +11,10 @@ import {
   useEventStore,
   useTaskStore,
   useUIStore,
+  useSettingsStore,
 } from "@/store";
 import { Task, Event } from "@/types";
+import { createFullCalendarFormatters, formatDate } from "@/lib/dateUtils";
 
 interface FullCalendarComponentProps {
   sidebarRef?: React.RefObject<HTMLElement | null>;
@@ -24,7 +26,8 @@ export function FullCalendarComponent({
   const { view, setCurrentDate, setView } = useCalendarStore();
   const { events, updateEvent } = useEventStore();
   const { tasks, updateTask } = useTaskStore();
-  const { setEditingEvent, setEditingTask, setCreateDialogData } = useUIStore();
+const { setEditingEvent, setEditingTask, setCreateDialogData } = useUIStore();
+  const { settings } = useSettingsStore();
   const calendarRef = useRef<FullCalendar>(null);
   const [, setDraggableInstance] = useState<Draggable | null>(null);
   const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
@@ -143,6 +146,49 @@ export function FullCalendarComponent({
     setCalendarEvents(newEvents);
   }, [events, tasks, convertEventToEvent, convertTaskToEvent]);
 
+  // Create formatters based on user settings
+  const formatters = React.useMemo(() => {
+    return createFullCalendarFormatters(settings);
+  }, [settings]);
+
+  // Update calendar title with user's date format
+  const updateCalendarTitle = useCallback((date: Date, viewType: string) => {
+    if (!calendarRef.current) return;
+    
+    let titleText = '';
+    switch (viewType) {
+      case 'dayGridMonth':
+        titleText = formatDate(date, settings);
+        break;
+      case 'timeGridWeek':
+        const weekStart = new Date(date);
+        weekStart.setDate(date.getDate() - date.getDay());
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+        titleText = `${formatDate(weekStart, settings)} - ${formatDate(weekEnd, settings)}`;
+        break;
+      case 'timeGridDay':
+        titleText = formatDate(date, settings);
+        break;
+    }
+    
+    // Update the title element
+    const titleElement = document.querySelector('.fc-toolbar-title');
+    if (titleElement && titleText) {
+      titleElement.textContent = titleText;
+    }
+  }, [settings]);
+
+  // Update title when settings change
+  useEffect(() => {
+    if (calendarRef.current) {
+      const calendarApi = calendarRef.current.getApi();
+      const currentDate = calendarApi.getDate();
+      const currentView = calendarApi.view.type;
+      updateCalendarTitle(currentDate, currentView);
+    }
+  }, [settings, updateCalendarTitle]);
+
   // Get FullCalendar view name from our store view
   const getFullCalendarView = () => {
     switch (view) {
@@ -218,6 +264,9 @@ export function FullCalendarComponent({
     if (dateInfo.start) {
       setCurrentDate(new Date(dateInfo.start));
     }
+    
+    // Update title with user's date format when date changes
+    updateCalendarTitle(dateInfo.start, dateInfo.view.type);
   };
 
   // Handle view change
@@ -240,7 +289,12 @@ export function FullCalendarComponent({
     }
 
     setView(mappedView);
+    
+    // Update title with user's date format
+    updateCalendarTitle(viewInfo.view.currentStart, viewInfo.view.type);
   };
+
+  
 
   // Handle event click
   const handleEventClick = (clickInfo: any) => {
@@ -449,7 +503,7 @@ export function FullCalendarComponent({
     };
   }, [tasks, updateTask]);
 
-  return (
+return (
     <div className="h-full bg-background">
       <FullCalendar
         ref={calendarRef}
@@ -482,6 +536,24 @@ export function FullCalendarComponent({
         eventMouseLeave={(info) => {
           // Remove hover effect
           info.el.style.cursor = "";
+        }}
+        // Custom formatters based on user settings
+        slotLabelFormat={settings.timeFormat === '12h' ? 
+          { hour: 'numeric', minute: '2-digit', hour12: true } : 
+          { hour: '2-digit', minute: '2-digit', hour12: false }
+        }
+        eventTimeFormat={settings.timeFormat === '12h' ? 
+          { hour: 'numeric', minute: '2-digit', hour12: true } : 
+          { hour: '2-digit', minute: '2-digit', hour12: false }
+        }
+        titleFormat={{
+          month: 'long',
+          year: 'numeric'
+        }}
+        dayHeaderFormat={{
+          weekday: 'short',
+          month: 'numeric',
+          day: 'numeric'
         }}
       />
 
