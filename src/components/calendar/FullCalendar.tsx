@@ -15,6 +15,7 @@ import {
 } from "@/store";
 import { Task, Event } from "@/types";
 import { createFullCalendarFormatters, formatDate } from "@/lib/dateUtils";
+import { format } from "date-fns";
 
 interface FullCalendarComponentProps {
   sidebarRef?: React.RefObject<HTMLElement | null>;
@@ -26,7 +27,7 @@ export function FullCalendarComponent({
   const { view, setCurrentDate, setView } = useCalendarStore();
   const { events, updateEvent } = useEventStore();
   const { tasks, updateTask } = useTaskStore();
-const { setEditingEvent, setEditingTask, setCreateDialogData } = useUIStore();
+  const { setEditingEvent, setEditingTask, setCreateDialogData } = useUIStore();
   const { settings } = useSettingsStore();
   const calendarRef = useRef<FullCalendar>(null);
   const [, setDraggableInstance] = useState<Draggable | null>(null);
@@ -94,45 +95,42 @@ const { setEditingEvent, setEditingTask, setCreateDialogData } = useUIStore();
   );
 
   // Convert single event to FullCalendar event format
-  const convertEventToEvent = useCallback(
-    (event: Event) => {
-      let start = event.startTime;
-      let end = event.endTime;
-      
-      // For all-day events, ensure proper date handling
-      if (event.allDay) {
-        start = new Date(event.startTime);
-        start.setHours(0, 0, 0, 0);
-        end = new Date(event.startTime);
-        end.setDate(end.getDate() + 1); // End should be next day for all-day events
-        end.setHours(0, 0, 0, 0);
-      }
-      
-      const converted = {
-        id: event.id,
-        title: event.title,
-        start,
-        end,
-        allDay: event.allDay,
-        backgroundColor: event.color + "20",
-        borderColor: event.color,
-        textColor: event.color,
-        extendedProps: {
-          type: "event",
-          data: event,
-        },
-      };
-      console.log('Converted event:', {
-        ...converted,
-        startValid: !isNaN(start.getTime()),
-        endValid: !isNaN(end.getTime()),
-        startStr: start.toString(),
-        endStr: end.toString()
-      });
-      return converted;
-    },
-    [],
-  );
+  const convertEventToEvent = useCallback((event: Event) => {
+    let start = event.startTime;
+    let end = event.endTime;
+
+    // For all-day events, ensure proper date handling
+    if (event.allDay) {
+      start = new Date(event.startTime);
+      start.setHours(0, 0, 0, 0);
+      end = new Date(event.startTime);
+      end.setDate(end.getDate() + 1); // End should be next day for all-day events
+      end.setHours(0, 0, 0, 0);
+    }
+
+    const converted = {
+      id: event.id,
+      title: event.title,
+      start,
+      end,
+      allDay: event.allDay,
+      backgroundColor: event.color + "20",
+      borderColor: event.color,
+      textColor: event.color,
+      extendedProps: {
+        type: "event",
+        data: event,
+      },
+    };
+    console.log("Converted event:", {
+      ...converted,
+      startValid: !isNaN(start.getTime()),
+      endValid: !isNaN(end.getTime()),
+      startStr: start.toString(),
+      endStr: end.toString(),
+    });
+    return converted;
+  }, []);
 
   // Initialize calendar events
   useEffect(() => {
@@ -140,9 +138,9 @@ const { setEditingEvent, setEditingTask, setCreateDialogData } = useUIStore();
       ...events.map(convertEventToEvent),
       ...tasks.filter((task) => task.scheduledDate).map(convertTaskToEvent),
     ];
-    console.log('Calendar events:', newEvents);
-    console.log('Raw events:', events);
-    console.log('Raw tasks:', tasks);
+    console.log("Calendar events:", newEvents);
+    console.log("Raw events:", events);
+    console.log("Raw tasks:", tasks);
     setCalendarEvents(newEvents);
   }, [events, tasks, convertEventToEvent, convertTaskToEvent]);
 
@@ -151,33 +149,39 @@ const { setEditingEvent, setEditingTask, setCreateDialogData } = useUIStore();
     return createFullCalendarFormatters(settings);
   }, [settings]);
 
-  // Update calendar title with user's date format
-  const updateCalendarTitle = useCallback((date: Date, viewType: string) => {
+  // Update day headers with user's date format
+  const updateDayHeaders = useCallback(() => {
     if (!calendarRef.current) return;
-    
-    let titleText = '';
-    switch (viewType) {
-      case 'dayGridMonth':
-        titleText = formatDate(date, settings);
-        break;
-      case 'timeGridWeek':
-        const weekStart = new Date(date);
-        weekStart.setDate(date.getDate() - date.getDay());
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekStart.getDate() + 6);
-        titleText = `${formatDate(weekStart, settings)} - ${formatDate(weekEnd, settings)}`;
-        break;
-      case 'timeGridDay':
-        titleText = formatDate(date, settings);
-        break;
-    }
-    
-    // Update the title element
-    const titleElement = document.querySelector('.fc-toolbar-title');
-    if (titleElement && titleText) {
-      titleElement.textContent = titleText;
-    }
-  }, [settings]);
+
+    const calendarApi = calendarRef.current.getApi();
+    const currentView = calendarApi.view.type;
+
+    const headerCells = document.querySelectorAll(".fc-col-header-cell");
+    headerCells.forEach((cell) => {
+      const textElement = cell.querySelector(".fc-col-header-cell-cushion");
+      if (textElement) {
+        const dataDate = cell.getAttribute("data-date");
+        if (dataDate) {
+          const date = new Date(dataDate);
+          let headerText = "";
+
+          switch (currentView) {
+            case "dayGridMonth":
+              // Month view: just weekday in short form (Mon, Tue, etc.)
+              headerText = format(date, "EEE");
+              break;
+            case "timeGridWeek":
+            case "timeGridDay":
+              // Week and day view: weekday + date (Mon 20, Tue 21, etc.)
+              headerText = format(date, "EEE d");
+              break;
+          }
+
+          textElement.textContent = headerText;
+        }
+      }
+    });
+  }, []);
 
   // Update title when settings change
   useEffect(() => {
@@ -185,9 +189,9 @@ const { setEditingEvent, setEditingTask, setCreateDialogData } = useUIStore();
       const calendarApi = calendarRef.current.getApi();
       const currentDate = calendarApi.getDate();
       const currentView = calendarApi.view.type;
-      updateCalendarTitle(currentDate, currentView);
+      updateDayHeaders();
     }
-  }, [settings, updateCalendarTitle]);
+  }, [settings, updateDayHeaders]);
 
   // Get FullCalendar view name from our store view
   const getFullCalendarView = () => {
@@ -264,9 +268,9 @@ const { setEditingEvent, setEditingTask, setCreateDialogData } = useUIStore();
     if (dateInfo.start) {
       setCurrentDate(new Date(dateInfo.start));
     }
-    
-    // Update title with user's date format when date changes
-    updateCalendarTitle(dateInfo.start, dateInfo.view.type);
+
+    // Update day headers
+    setTimeout(() => updateDayHeaders(), 0);
   };
 
   // Handle view change
@@ -289,12 +293,10 @@ const { setEditingEvent, setEditingTask, setCreateDialogData } = useUIStore();
     }
 
     setView(mappedView);
-    
-    // Update title with user's date format
-    updateCalendarTitle(viewInfo.view.currentStart, viewInfo.view.type);
-  };
 
-  
+    // Update day headers
+    setTimeout(() => updateDayHeaders(), 0);
+  };
 
   // Handle event click
   const handleEventClick = (clickInfo: any) => {
@@ -442,12 +444,12 @@ const { setEditingEvent, setEditingTask, setCreateDialogData } = useUIStore();
   const handleEventContent = (eventInfo: any) => {
     const { extendedProps } = eventInfo.event;
 
-    console.log('handleEventContent called for:', {
+    console.log("handleEventContent called for:", {
       title: eventInfo.event.title,
       type: extendedProps.type,
       start: eventInfo.event.start,
       end: eventInfo.event.end,
-      allDay: eventInfo.event.allDay
+      allDay: eventInfo.event.allDay,
     });
 
     if (extendedProps.type === "task") {
@@ -503,7 +505,7 @@ const { setEditingEvent, setEditingTask, setCreateDialogData } = useUIStore();
     };
   }, [tasks, updateTask]);
 
-return (
+  return (
     <div className="h-full bg-background">
       <FullCalendar
         ref={calendarRef}
@@ -538,22 +540,22 @@ return (
           info.el.style.cursor = "";
         }}
         // Custom formatters based on user settings
-        slotLabelFormat={settings.timeFormat === '12h' ? 
-          { hour: 'numeric', minute: '2-digit', hour12: true } : 
-          { hour: '2-digit', minute: '2-digit', hour12: false }
+        slotLabelFormat={
+          settings.timeFormat === "12h"
+            ? { hour: "numeric", minute: "2-digit", hour12: true }
+            : { hour: "2-digit", minute: "2-digit", hour12: false }
         }
-        eventTimeFormat={settings.timeFormat === '12h' ? 
-          { hour: 'numeric', minute: '2-digit', hour12: true } : 
-          { hour: '2-digit', minute: '2-digit', hour12: false }
+        eventTimeFormat={
+          settings.timeFormat === "12h"
+            ? { hour: "numeric", minute: "2-digit", hour12: true }
+            : { hour: "2-digit", minute: "2-digit", hour12: false }
         }
         titleFormat={{
-          month: 'long',
-          year: 'numeric'
+          month: "long",
+          year: "numeric",
         }}
         dayHeaderFormat={{
-          weekday: 'short',
-          month: 'numeric',
-          day: 'numeric'
+          weekday: "short",
         }}
       />
 
