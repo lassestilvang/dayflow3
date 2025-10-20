@@ -44,13 +44,31 @@ export const useEventStore = create<EventStore>((set, get) => ({
         endTime: string;
         createdAt: string;
         updatedAt: string;
-      }) => ({
-        ...event,
-        startTime: new Date(event.startTime),
-        endTime: new Date(event.endTime),
-        createdAt: new Date(event.createdAt),
-        updatedAt: new Date(event.updatedAt),
-      }));
+      }) => {
+        const startTime = new Date(event.startTime);
+        const endTime = new Date(event.endTime);
+        const createdAt = new Date(event.createdAt);
+        const updatedAt = new Date(event.updatedAt);
+        
+        console.log('Converting event dates:', {
+          id: event.id,
+          title: event.title,
+          startTimeStr: event.startTime,
+          endTimeStr: event.endTime,
+          startTime,
+          endTime,
+          isValidStart: !isNaN(startTime.getTime()),
+          isValidEnd: !isNaN(endTime.getTime())
+        });
+        
+        return {
+          ...event,
+          startTime,
+          endTime,
+          createdAt,
+          updatedAt,
+        };
+      });
       set({ events: processedEvents, isLoading: false });
     } catch (error) {
       set({ 
