@@ -9,6 +9,7 @@ import { Task, Event } from '@/types';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatTime } from '@/lib/dateUtils';
 import { useResize } from '@/hooks/useResize';
+import { calculateOverlapLayout, PositionedLayoutItem } from '@/lib/overlapUtils';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const HOUR_HEIGHT = 80; // pixels per hour
@@ -273,6 +274,9 @@ export function DayView() {
   const allDayTasks = tasksWithOptimistic.filter(task => task.allDay);
   const timedEvents = eventsWithOptimistic.filter(event => !event.allDay);
   const timedTasks = tasksWithOptimistic.filter(task => !task.allDay);
+
+  // Calculate overlap layout for positioned items
+  const positionedItems = calculateOverlapLayout(timedEvents, timedTasks);
 
   // Update current time every minute
   useEffect(() => {
@@ -793,125 +797,98 @@ return (
                </DroppableHour>
              ))}
 
-            {/* Positioned events - rendered outside the hour slots */}
+            {/* Positioned items with overlap layout - rendered outside the hour slots */}
             <div className="absolute left-20 right-4 top-0 pointer-events-none" style={{ height: `${HOURS.length * HOUR_HEIGHT}px` }}>
-              {timedEvents.map((event) => {
-                const top = getEventTopPosition(event);
-                const height = getItemHeight(getEventDuration(event));
+              {positionedItems.map((positionedItem) => {
+                const isTask = 'category' in positionedItem.data;
+                const item = positionedItem.data;
+                const top = positionedItem.startMinutes * (HOUR_HEIGHT / 60); // Convert minutes to pixels
+                const height = getItemHeight(isTask ? getTaskDuration(item as Task) : getEventDuration(item as Event));
                 
-return (
+                return (
                    <div
-                     key={event.id}
+                     key={positionedItem.id}
                      className="absolute z-10 pointer-events-auto"
                      style={{
                        top: `${top}px`,
                        height: `${height}px`,
-                       width: '100%',
+                       left: `${positionedItem.left}%`,
+                       width: `${positionedItem.width}%`,
                      }}
                   >
                     <ResizableItem
-                        item={event}
+                        item={item}
                         top={top}
                         height={height}
                         onResizeStart={(e, handle) => {
                           startResize(e, {
                             type: handle,
-                            itemId: event.id,
-                            itemType: 'event',
-                            originalItem: event
+                            itemId: item.id,
+                            itemType: isTask ? 'task' : 'event',
+                            originalItem: item
                           }, calendarContainerRef.current!, top, height);
                         }}
                         isResizing={isResizing}
                         resizeHandle={resizeHandle}
                       >
-                        <div
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingEvent(event);
-                          }}
-                          className={cn(
-                            "h-full p-2 rounded-lg border cursor-move text-sm overflow-hidden",
-                            !isResizing && "hover:opacity-80"
-                          )}
-                          style={{ 
-                            backgroundColor: event.color + '20', 
-                            borderColor: event.color,
-                            color: event.color 
-                          }}
-                        >
-                          <div className="font-medium truncate">{event.title}</div>
-                          {event.description && (
-                            <div className="text-xs opacity-75 mt-1 truncate">{event.description}</div>
-                          )}
-                          <div className="text-xs opacity-75 mt-1">
-                            {formatTime(new Date(event.startTime), settings)} - {formatTime(new Date(event.endTime), settings)}
+                        {isTask ? (
+                          // Task content
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingTask(item as Task);
+                            }}
+                            className={cn(
+                              'h-full p-2 rounded-lg border cursor-move text-sm overflow-hidden',
+                              !isResizing && 'hover:opacity-80',
+                              (item as Task).category === 'work' && 'bg-blue-100 text-blue-800 border-blue-200',
+                              (item as Task).category === 'family' && 'bg-green-100 text-green-800 border-green-200',
+                              (item as Task).category === 'personal' && 'bg-orange-100 text-orange-800 border-orange-200',
+                              (item as Task).category === 'travel' && 'bg-purple-100 text-purple-800 border-purple-200',
+                              (item as Task).category === 'inbox' && 'bg-gray-100 text-gray-800 border-gray-200'
+                            )}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Checkbox
+                                checked={(item as Task).completed}
+                                onCheckedChange={(checked) => handleTaskCompleteToggle(item.id, checked as boolean, { stopPropagation: () => {} } as React.MouseEvent)}
+                                onClick={(e) => handleTaskCompleteToggle(item.id, !(item as Task).completed, e)}
+                                className="size-4 flex-shrink-0"
+                              />
+                              <span className={cn('truncate', (item as Task).completed && 'line-through opacity-60')}>
+                                {(item as Task).title}
+                              </span>
+                            </div>
+                            {(item as Task).description && (
+                              <div className="text-xs opacity-75 mt-1 ml-6 truncate">{(item as Task).description}</div>
+                            )}
                           </div>
-                        </div>
-                      </ResizableItem>
-                  </div>
-                );
-              })}
-
-              {/* Positioned tasks - rendered outside the hour slots */}
-              {timedTasks.map((task) => {
-                const top = getTaskTopPosition(task);
-                const height = getItemHeight(getTaskDuration(task));
-                
-return (
-                   <div
-                     key={`${task.id}-${task.completed ? 'completed' : 'incomplete'}`}
-                     className="absolute z-10 pointer-events-auto"
-                     style={{
-                       top: `${top}px`,
-                       height: `${height}px`,
-                       width: '100%',
-                     }}
-                  >
-                    <ResizableItem
-                        item={task}
-                        top={top}
-                        height={height}
-                        onResizeStart={(e, handle) => {
-                          startResize(e, {
-                            type: handle,
-                            itemId: task.id,
-                            itemType: 'task',
-                            originalItem: task
-                          }, calendarContainerRef.current!, top, height);
-                        }}
-                        isResizing={isResizing}
-                        resizeHandle={resizeHandle}
-                      >
-                        <div
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingTask(task);
-                          }}
-                          className={cn(
-                            'h-full p-2 rounded-lg border cursor-move text-sm overflow-hidden',
-                            !isResizing && 'hover:opacity-80',
-                            task.category === 'work' && 'bg-blue-100 text-blue-800 border-blue-200',
-                            task.category === 'family' && 'bg-green-100 text-green-800 border-green-200',
-                            task.category === 'personal' && 'bg-orange-100 text-orange-800 border-orange-200',
-                            task.category === 'travel' && 'bg-purple-100 text-purple-800 border-purple-200',
-                            task.category === 'inbox' && 'bg-gray-100 text-gray-800 border-gray-200'
-                          )}
-                        >
-                          <div className="flex items-center gap-2">
-                            <Checkbox
-                              checked={task.completed}
-                              onCheckedChange={(checked) => handleTaskCompleteToggle(task.id, checked as boolean, { stopPropagation: () => {} } as React.MouseEvent)}
-                              onClick={(e) => handleTaskCompleteToggle(task.id, !task.completed, e)}
-                              className="size-4 flex-shrink-0"
-                            />
-                            <span className={cn('truncate', task.completed && 'line-through opacity-60')}>
-                              {task.title}
-                            </span>
+                        ) : (
+                          // Event content
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingEvent(item as Event);
+                            }}
+                            className={cn(
+                              "h-full p-2 rounded-lg border cursor-move text-sm overflow-hidden",
+                              !isResizing && "hover:opacity-80"
+                            )}
+                            style={{ 
+                              backgroundColor: (item as Event).color + '20', 
+                              borderColor: (item as Event).color,
+                              color: (item as Event).color 
+                            }}
+                          >
+                            <div className="font-medium truncate">{(item as Event).title}</div>
+                            {(item as Event).description && (
+                              <div className="text-xs opacity-75 mt-1 truncate">{(item as Event).description}</div>
+                            )}
+                            <div className="text-xs opacity-75 mt-1">
+                              {formatTime(new Date((item as Event).startTime), settings)} - {formatTime(new Date((item as Event).endTime), settings)}
+                            </div>
                           </div>
-                          {task.description && (
-                            <div className="text-xs opacity-75 mt-1 ml-6 truncate">{task.description}</div>
-                          )}
-                        </div>
+                        )}
                       </ResizableItem>
                   </div>
                 );

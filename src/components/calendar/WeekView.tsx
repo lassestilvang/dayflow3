@@ -15,6 +15,7 @@ import { Task, Event } from "@/types";
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatTime } from "@/lib/dateUtils";
 import { useResize } from "@/hooks/useResize";
+import { calculateDayLayout, PositionedLayoutItem } from '@/lib/overlapUtils';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const HOUR_HEIGHT = 60; // pixels per hour
@@ -938,134 +939,78 @@ className={cn(
                       </DroppableSlot>
                     ))}
 
-                    {/* Positioned events for this date - rendered outside the hour slots */}
+                    {/* Positioned items with overlap layout for this date - rendered outside the hour slots */}
                     <div
                       className="absolute left-1 right-1 top-0 pointer-events-none z-10"
                       style={{ height: `${HOURS.length * HOUR_HEIGHT}px` }}
                     >
-{getItemsForDate(date).events
-                        .filter((event) => !event.allDay)
-                        .map((event) => {
-                           const top = getEventTopPosition(event);
-                           const height = getItemHeight(getEventDuration(event));
+                      {(() => {
+                        const itemsForDate = getItemsForDate(date);
+                        const positionedItems = calculateDayLayout(
+                          itemsForDate.events.filter(event => !event.allDay),
+                          itemsForDate.tasks.filter(task => !task.allDay && task.scheduledTime)
+                        );
 
-                           return (
-                             <div
-                               key={event.id}
-                               className="absolute z-20 pointer-events-auto"
-                               style={{
-                                 top: `${top}px`,
-                                 height: `${height}px`,
-                                 width: "100%",
-                               }}
-                             >
-<ResizableItem
-                                    item={event}
-                                    top={top}
-                                    height={height}
-                                    onResizeStart={(e, handle) => {
-                                      startResize(e, {
-                                        type: handle,
-                                        itemId: event.id,
-                                        itemType: 'event',
-                                        originalItem: event
-                                      }, calendarContainerRef.current!, top, height);
-                                    }}
-                                    isResizing={isResizing}
-                                    resizeHandle={resizeHandle}
-                                  >
-                                    <div
-                                      className={cn(
-                                       "h-full text-xs p-1 rounded cursor-move truncate overflow-hidden",
-                                       !isResizing && "hover:opacity-80"
-                                     )}
-                                      style={{
-                                        backgroundColor: event.color + "20",
-                                        borderColor: event.color,
-                                      }}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setEditingEvent(event);
-                                      }}
-                                    >
-                                      <div className="font-medium truncate">
-                                        {event.title}
-                                      </div>
-                                      <div className="opacity-75">
-                                        {formatTime(
-                                          new Date(event.startTime),
-                                          settings,
-                                        )}{" "}
-                                        -{" "}
-                                        {formatTime(
-                                          new Date(event.endTime),
-                                          settings,
-                                        )}
-                                      </div>
-                                    </div>
-                                  </ResizableItem>
-                             </div>
-                           );
-                         })}
-
-{/* Positioned tasks for this date - rendered outside the hour slots */}
-                       {getItemsForDate(date).tasks
-                         .filter((task) => !task.allDay && task.scheduledTime)
-                         .map((task) => {
-                           const top = getTaskTopPosition(task);
-                           const height = getItemHeight(getTaskDuration(task));
-
-                           return (
-                             <div
-                               key={`${task.id}-${task.completed ? "completed" : "incomplete"}`}
-                               className="absolute z-20 pointer-events-auto"
-                               style={{
-                                 top: `${top}px`,
-                                 height: `${height}px`,
-                                 width: "100%",
-                               }}
-                             >
-<ResizableItem
-                                  item={task}
-                                  top={top}
-                                  height={height}
-                                  onResizeStart={(e, handle) => {
-                                    startResize(e, {
-                                      type: handle,
-                                      itemId: task.id,
-                                      itemType: 'task',
-                                      originalItem: task
-                                    }, calendarContainerRef.current!, top, height);
-                                  }}
-                                  isResizing={isResizing}
-                                  resizeHandle={resizeHandle}
-                                >
+                        return positionedItems.map((positionedItem) => {
+                          const isTask = 'category' in positionedItem.data;
+                          const item = positionedItem.data;
+                          const top = positionedItem.startMinutes * (HOUR_HEIGHT / 60); // Convert minutes to pixels
+                          const height = getItemHeight(isTask ? getTaskDuration(item as Task) : getEventDuration(item as Event));
+                          
+                          return (
+                            <div
+                              key={positionedItem.id}
+                              className="absolute z-20 pointer-events-auto"
+                              style={{
+                                top: `${top}px`,
+                                height: `${height}px`,
+                                left: `${positionedItem.left}%`,
+                                width: `${positionedItem.width}%`,
+                              }}
+                            >
+                              <ResizableItem
+                                item={item}
+                                top={top}
+                                height={height}
+                                onResizeStart={(e, handle) => {
+                                  startResize(e, {
+                                    type: handle,
+                                    itemId: item.id,
+                                    itemType: isTask ? 'task' : 'event',
+                                    originalItem: item
+                                  }, calendarContainerRef.current!, top, height);
+                                }}
+                                isResizing={isResizing}
+                                resizeHandle={resizeHandle}
+                              >
+                                {isTask ? (
+                                  // Task content
                                   <div
-className={cn(
-                                       "h-full text-xs p-1 rounded border cursor-move truncate overflow-hidden flex items-start gap-1",
-                                       !isResizing && "hover:opacity-80",
-                                      task.category === "work" &&
+                                    className={cn(
+                                      "h-full text-xs p-1 rounded border cursor-move truncate overflow-hidden flex items-start gap-1",
+                                      !isResizing && "hover:opacity-80",
+                                      (item as Task).category === "work" &&
                                         "bg-blue-100 text-blue-800 border-blue-200",
-                                      task.category === "family" &&
+                                      (item as Task).category === "family" &&
                                         "bg-green-100 text-green-800 border-green-200",
-                                      task.category === "personal" &&
+                                      (item as Task).category === "personal" &&
                                         "bg-orange-100 text-orange-800 border-orange-200",
-                                      task.category === "travel" &&
+                                      (item as Task).category === "travel" &&
                                         "bg-purple-100 text-purple-800 border-purple-200",
-                                      task.category === "inbox" &&
+                                      (item as Task).category === "inbox" &&
                                         "bg-gray-100 text-gray-800 border-gray-200",
-                                      task.completed && "opacity-60 line-through",
+                                      (item as Task).completed && "opacity-60 line-through",
                                     )}
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      setEditingTask(task);
+                                      setEditingTask(item as Task);
                                     }}
                                   >
                                     <Checkbox
-                                      checked={task.completed}
+                                      checked={(item as Task).completed}
                                       onCheckedChange={(checked) =>
                                         handleTaskCompleteToggle(
-                                          task.id,
+                                          item.id,
                                           checked as boolean,
                                           {
                                             stopPropagation: () => {},
@@ -1074,19 +1019,52 @@ className={cn(
                                       }
                                       onClick={(e) =>
                                         handleTaskCompleteToggle(
-                                          task.id,
-                                          !task.completed,
+                                          item.id,
+                                          !(item as Task).completed,
                                           e,
                                         )
                                       }
                                       className="size-3 flex-shrink-0 mt-0.5"
                                     />
-                                    <span className="truncate">{task.title}</span>
+                                    <span className="truncate">{(item as Task).title}</span>
                                   </div>
-                                </ResizableItem>
-                             </div>
-                           );
-                         })}
+                                ) : (
+                                  // Event content
+                                  <div
+                                    className={cn(
+                                      "h-full text-xs p-1 rounded cursor-move truncate overflow-hidden",
+                                      !isResizing && "hover:opacity-80"
+                                    )}
+                                    style={{
+                                      backgroundColor: (item as Event).color + "20",
+                                      borderColor: (item as Event).color,
+                                    }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingEvent(item as Event);
+                                    }}
+                                  >
+                                    <div className="font-medium truncate">
+                                      {(item as Event).title}
+                                    </div>
+                                    <div className="opacity-75">
+                                      {formatTime(
+                                        new Date((item as Event).startTime),
+                                        settings,
+                                      )}{" "}
+                                      -{" "}
+                                      {formatTime(
+                                        new Date((item as Event).endTime),
+                                        settings,
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </ResizableItem>
+                            </div>
+                          );
+                        });
+                      })()}
                     </div>
                   </div>
                 </div>
