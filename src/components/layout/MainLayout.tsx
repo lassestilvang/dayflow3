@@ -4,7 +4,6 @@ import React, { ReactNode, useState, useEffect, useRef, cloneElement } from 'rea
 import { DndContext, 
          pointerWithin, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { Sidebar } from './Sidebar';
-import { Header } from './Header';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { UnifiedForm } from '@/components/forms/UnifiedForm';
 
@@ -187,10 +186,7 @@ export function MainLayout({ children }: MainLayoutProps) {
 
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Header */}
-          <Header />
-          
-{/* Main Content */}
+          {/* Main Content */}
           <main className="flex-1 overflow-auto">
             {React.isValidElement(children) 
               ? React.cloneElement(children, { sidebarRef } as any)
