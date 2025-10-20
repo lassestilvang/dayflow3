@@ -5,6 +5,7 @@ interface UserSettings {
   dateFormat: string;
   timeFormat: '12h' | '24h';
   weekStart: 'sunday' | 'monday';
+  displayWeekNumbers: boolean;
 }
 
 interface SettingsStore {
@@ -19,6 +20,7 @@ const DEFAULT_SETTINGS: UserSettings = {
   dateFormat: 'MMM d, yyyy',
   timeFormat: '24h',
   weekStart: 'sunday',
+  displayWeekNumbers: false,
 };
 
 export const useSettingsStore = create<SettingsStore>()(

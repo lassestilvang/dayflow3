@@ -5,11 +5,13 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface UserSettings {
   dateFormat: string;
   timeFormat: '12h' | '24h';
   weekStart: 'sunday' | 'monday';
+  displayWeekNumbers: boolean;
 }
 
 interface SettingsModalProps {
@@ -104,6 +106,17 @@ export function SettingsModal({ isOpen, onOpenChange, settings, onSave }: Settin
               <SelectItem value="monday">Monday</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <Checkbox
+            id="display-week-numbers"
+            checked={localSettings.displayWeekNumbers}
+            onCheckedChange={(checked) => 
+              setLocalSettings(prev => ({ ...prev, displayWeekNumbers: !!checked }))
+            }
+          />
+          <Label htmlFor="display-week-numbers">Display week numbers</Label>
         </div>
       </div>
 

@@ -501,6 +501,8 @@ export function FullCalendarComponent({
         }}
         // Week start setting
         firstDay={settings.weekStart === "monday" ? 1 : 0}
+        // Week numbers setting
+        weekNumbers={settings.displayWeekNumbers}
         // Custom formatters based on user settings
         slotLabelFormat={
           settings.timeFormat === "12h"
