@@ -3,12 +3,12 @@ import { addDays, startOfWeek, endOfWeek } from 'date-fns';
 
 interface CalendarStore {
   currentDate: Date;
-  view: 'week' | 'month' | 'day';
+  view: 'week' | 'month' | 'day' | 'list';
   selectedDate: Date | null;
   
   // Actions
   setCurrentDate: (date: Date) => void;
-  setView: (view: 'week' | 'month' | 'day') => void;
+  setView: (view: 'week' | 'month' | 'day' | 'list') => void;
   setSelectedDate: (date: Date | null) => void;
   navigatePrevious: () => void;
   navigateNext: () => void;
@@ -52,6 +52,10 @@ export const useCalendarStore = create<CalendarStore>((set, get) => ({
         newDate = new Date(currentDate);
         newDate.setMonth(newDate.getMonth() - 1);
         break;
+      case 'list':
+        newDate = new Date(currentDate);
+        newDate.setDate(newDate.getDate() - 7);
+        break;
       default:
         newDate = currentDate;
     }
@@ -75,6 +79,10 @@ export const useCalendarStore = create<CalendarStore>((set, get) => ({
       case 'month':
         newDate = new Date(currentDate);
         newDate.setMonth(newDate.getMonth() + 1);
+        break;
+      case 'list':
+        newDate = new Date(currentDate);
+        newDate.setDate(newDate.getDate() + 7);
         break;
       default:
         newDate = currentDate;

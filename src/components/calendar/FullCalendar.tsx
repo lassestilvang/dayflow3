@@ -10,6 +10,7 @@ import React, {
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
+import listPlugin from "@fullcalendar/list";
 import interactionPlugin from "@fullcalendar/interaction";
 import { Draggable } from "@fullcalendar/interaction";
 import {
@@ -164,6 +165,8 @@ export function FullCalendarComponent({
         return "timeGridWeek";
       case "month":
         return "dayGridMonth";
+      case "list":
+        return "listWeek";
       default:
         return "timeGridWeek";
     }
@@ -235,7 +238,7 @@ export function FullCalendarComponent({
   // Handle view change
   const handleViewChange = (viewInfo: any) => {
     const newView = viewInfo.view.type;
-    let mappedView: "day" | "week" | "month";
+    let mappedView: "day" | "week" | "month" | "list";
 
     switch (newView) {
       case "timeGridDay":
@@ -246,6 +249,9 @@ export function FullCalendarComponent({
         break;
       case "dayGridMonth":
         mappedView = "month";
+        break;
+      case "listWeek":
+        mappedView = "list";
         break;
       default:
         mappedView = "week";
@@ -465,12 +471,12 @@ export function FullCalendarComponent({
     <div className="h-full bg-background">
       <FullCalendar
         ref={calendarRef}
-        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+        plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
         initialView={getFullCalendarView()}
         headerToolbar={{
           left: "prev,next today",
           center: "title",
-          right: "timeGridDay,timeGridWeek,dayGridMonth",
+          right: "timeGridDay,timeGridWeek,dayGridMonth,listWeek",
         }}
         events={calendarEvents}
         eventResizableFromStart={true}
@@ -775,6 +781,77 @@ export function FullCalendarComponent({
         .fc-popover .fc-event:hover {
           background: var(--accent);
           color: var(--accent-foreground);
+        }
+
+        /* List view styling */
+        .fc-list {
+          background: var(--background);
+          color: var(--foreground);
+        }
+
+        .fc-list-table {
+          background: var(--background);
+        }
+
+        .fc-list-day {
+          background: var(--background);
+        }
+
+        .fc-list-day-cushion {
+          background: var(--muted);
+          color: var(--foreground);
+          border-bottom: 1px solid var(--border);
+        }
+
+        .fc-list-sticky .fc-list-day > * {
+          background: var(--muted);
+          color: var(--foreground);
+        }
+
+        .fc-list-event {
+          background: var(--card);
+          border: 1px solid var(--border);
+          color: var(--foreground);
+        }
+
+        .fc-list-event:hover {
+          background: var(--accent);
+          color: var(--accent-foreground);
+        }
+
+        .dark .fc .fc-list-event:hover td {
+          background: var(--accent);
+          color: var(--accent-foreground);
+          border-color: var(--accent);
+        }
+
+        .fc-list-event-time {
+          color: var(--muted-foreground);
+        }
+
+        .fc-list-event-title {
+          color: var(--foreground);
+        }
+
+        .fc-list-empty {
+          color: var(--muted-foreground);
+        }
+
+        /* Dark mode specific fixes for list view */
+        .dark .fc-list-sticky .fc-list-day > * {
+          background: var(--muted);
+          color: var(--foreground);
+          border-bottom: 1px solid var(--border);
+        }
+
+        .dark .fc-list-day-cushion {
+          background: var(--muted);
+          color: var(--foreground);
+        }
+
+        .dark .fc-list-event {
+          background: var(--card);
+          border-color: var(--border);
         }
       `}</style>
     </div>
