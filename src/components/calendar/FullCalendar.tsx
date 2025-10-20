@@ -608,28 +608,28 @@ export function FullCalendarComponent({
         }
 
         .fc-toolbar-title {
-          color: hsl(var(--foreground));
+          color: var(--foreground);
           font-size: 1.25rem;
           font-weight: 600;
         }
 
         .fc-button {
-          background: hsl(var(--muted));
-          color: hsl(var(--muted-foreground));
-          border: 1px solid hsl(var(--border));
+          background: var(--muted);
+          color: var(--muted-foreground);
+          border: 1px solid var(--border);
           border-radius: 0.375rem;
           font-weight: 500;
         }
 
         .fc-button:hover {
-          background: hsl(var(--accent));
-          color: hsl(var(--accent-foreground));
+          background: var(--accent);
+          color: var(--accent-foreground);
         }
 
         .fc-button-active {
-          background: hsl(var(--primary));
-          color: hsl(var(--primary-foreground));
-          border-color: hsl(var(--primary));
+          background: var(--primary);
+          color: var(--primary-foreground);
+          border-color: var(--primary);
         }
 
         .fc-button:disabled {
@@ -642,29 +642,29 @@ export function FullCalendarComponent({
         }
 
         .fc-daygrid-day-number {
-          color: hsl(var(--foreground));
+          color: var(--foreground);
         }
 
         .fc-col-header-cell {
-          background: hsl(var(--muted) / 0.3);
-          color: hsl(var(--muted-foreground));
+          background: color-mix(in oklch, var(--muted) 30%, transparent);
+          color: var(--muted-foreground);
         }
 
         .fc-day-today {
-          background: hsl(var(--primary) / 0.1) !important;
+          background: color-mix(in oklch, var(--primary) 10%, transparent) !important;
         }
 
         .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
           font-weight: 600;
-          color: hsl(var(--primary));
+          color: var(--primary);
         }
 
         .fc-timegrid-slot {
-          border-top: 1px solid hsl(var(--border));
+          border-top: 1px solid var(--border);
         }
 
         .fc-timegrid-axis {
-          color: hsl(var(--muted-foreground));
+          color: var(--muted-foreground);
         }
 
         .fc-event {
@@ -678,18 +678,18 @@ export function FullCalendarComponent({
         }
 
         .fc-now-indicator {
-          border-color: hsl(var(--destructive));
+          border-color: var(--destructive);
         }
 
         .fc-now-indicator-arrow {
-          border-top-color: hsl(var(--destructive));
+          border-top-color: var(--destructive);
         }
 
         /* Grid lines for day grid (month view) */
         .fc-daygrid-day-frame {
-          border-right: 1px solid hsl(var(--border));
-          border-bottom: 1px solid hsl(var(--border));
-          border-color: hsl(var(--border));
+          border-right: 1px solid var(--border);
+          border-bottom: 1px solid var(--border));
+          border-color: var(--border);
         }
 
         .fc-daygrid-day:last-child .fc-daygrid-day-frame {
@@ -703,8 +703,8 @@ export function FullCalendarComponent({
 
         /* Grid lines for time grid (week/day views) */
         .fc-timegrid-col {
-          border-right: 1px solid hsl(var(--border));
-          border-color: hsl(var(--border));
+          border-right: 1px solid var(--border);
+          border-color: var(--border);
         }
 
         .fc-timegrid-col:last-child {
@@ -712,30 +712,30 @@ export function FullCalendarComponent({
         }
 
         .fc-timegrid-body {
-          border-top: 1px solid hsl(var(--border));
-          border-color: hsl(var(--border));
+          border-top: 1px solid var(--border);
+          border-color: var(--border);
         }
 
         /* Horizontal grid lines in time grid */
         .fc-timegrid-slot-minor {
-          border-top: 1px solid hsl(var(--border) / 0.3);
-          border-color: hsl(var(--border) / 0.3);
+          border-top: 1px solid color-mix(in oklch, var(--border) 30%, transparent);
+          border-color: color-mix(in oklch, var(--border) 30%, transparent);
         }
 
         .fc-timegrid-slot-major {
-          border-top: 1px solid hsl(var(--border));
-          border-color: hsl(var(--border));
+          border-top: 1px solid var(--border);
+          border-color: var(--border);
         }
 
         /* Column headers */
         .fc-col-header {
-          border-bottom: 1px solid hsl(var(--border));
-          border-color: hsl(var(--border));
+          border-bottom: 1px solid var(--border);
+          border-color: var(--border);
         }
 
         .fc-col-header-cell {
-          border-right: 1px solid hsl(var(--border));
-          border-color: hsl(var(--border));
+          border-right: 1px solid var(--border);
+          border-color: var(--border);
         }
 
         .fc-col-header-cell:last-child {
@@ -755,6 +755,55 @@ export function FullCalendarComponent({
         .fc-daygrid-more-link {
           font-size: 0.75rem !important;
           padding: 1px 3px !important;
+        }
+
+        /* FullCalendar popover/modal for "+X more" */
+        .fc-popover {
+          background: var(--popover);
+          border: 1px solid var(--border);
+          border-radius: 0.5rem;
+          box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.05);
+        }
+
+        .dark .fc-theme-standard .fc-popover {
+          background: transparent;
+          border: none;
+        }
+
+        .fc-popover-title {
+          background: var(--muted);
+          color: var(--foreground);
+          border-bottom: 1px solid var(--border);
+          border-radius: 0.5rem 0.5rem 0 0;
+          font-weight: 600;
+          padding: 0.5rem 1rem;
+        }
+
+        .fc-theme-standard .fc-popover-header {
+          background: var(--muted);
+          color: var(--foreground);
+          border-bottom: 1px solid var(--border);
+          border-radius: 0.5rem 0.5rem 0 0;
+          font-weight: 600;
+          padding: 0.5rem 1rem;
+        }
+
+        .fc-popover-body {
+          background: var(--popover);
+          color: var(--foreground);
+          padding: 0.5rem;
+        }
+
+        .fc-popover .fc-event {
+          background: var(--card);
+          border: 1px solid var(--border);
+          color: var(--foreground);
+          margin-bottom: 0.25rem;
+        }
+
+        .fc-popover .fc-event:hover {
+          background: var(--accent);
+          color: var(--accent-foreground);
         }
       `}</style>
     </div>
