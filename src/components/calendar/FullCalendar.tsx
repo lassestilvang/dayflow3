@@ -514,7 +514,7 @@ export function FullCalendarComponent({
         headerToolbar={{
           left: "prev,next today",
           center: "title",
-          right: "dayGridMonth,timeGridWeek,timeGridDay",
+          right: "timeGridDay,timeGridWeek,dayGridMonth",
         }}
         events={calendarEvents}
         editable={true}
