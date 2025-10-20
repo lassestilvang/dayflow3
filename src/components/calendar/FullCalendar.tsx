@@ -181,6 +181,37 @@ export function FullCalendarComponent({
         }
       }
     });
+
+    // Enforce equal row heights in month view only
+    if (currentView === "dayGridMonth") {
+      setTimeout(() => {
+        const container = document.querySelector(".fc-month-equal-rows");
+        if (!container) return;
+        
+        const containerHeight = container.getBoundingClientRect().height;
+        const headerHeight = document.querySelector(".fc-col-header")?.getBoundingClientRect().height || 0;
+        const availableHeight = containerHeight - headerHeight;
+        
+        // Calculate optimal row height (6 weeks max in month view)
+        const rowHeight = Math.floor(availableHeight / 6);
+        
+        const dayFrames = document.querySelectorAll(".fc-daygrid-day-frame");
+        const rows = document.querySelectorAll(".fc-daygrid-day");
+        
+        // Apply calculated height to all rows
+        rows.forEach((row) => {
+          (row as HTMLElement).style.minHeight = `${rowHeight}px`;
+          (row as HTMLElement).style.height = `${rowHeight}px`;
+          (row as HTMLElement).style.maxHeight = `${rowHeight}px`;
+        });
+
+        dayFrames.forEach((frame) => {
+          (frame as HTMLElement).style.minHeight = `${rowHeight}px`;
+          (frame as HTMLElement).style.height = `${rowHeight}px`;
+          (frame as HTMLElement).style.maxHeight = `${rowHeight}px`;
+        });
+      }, 100);
+    }
   }, []);
 
   // Update title when settings change
@@ -507,7 +538,8 @@ export function FullCalendarComponent({
 
   return (
     <div className="h-full bg-background">
-      <FullCalendar
+      <div className="h-full fc-month-equal-rows">
+        <FullCalendar
         ref={calendarRef}
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
         initialView={getFullCalendarView()}
@@ -521,8 +553,19 @@ export function FullCalendarComponent({
         droppable={true}
         nowIndicator={true}
         height="100%"
-        contentHeight="100%"
+        contentHeight="auto"
         aspectRatio={undefined}
+        expandRows={false}
+        dayMaxEventRows={true}
+        dayMaxEvents={true}
+        fixedWeekCount={false}
+        views={{
+          dayGridMonth: {
+            dayMaxEventRows: 4,
+            dayMaxEvents: 4,
+            expandRows: false
+          }
+        }}
         datesSet={handleDatesSet}
         viewDidMount={handleViewChange}
         eventClick={handleEventClick}
@@ -734,7 +777,37 @@ export function FullCalendarComponent({
         .fc-col-header-cell:last-child {
           border-right: none;
         }
+
+        /* Equal rows container for month view only */
+        .fc-month-equal-rows .fc-daygrid-month-view .fc-daygrid-body {
+          display: grid !important;
+          grid-template-rows: repeat(6, 1fr) !important;
+        }
+
+        .fc-month-equal-rows .fc-daygrid-month-view .fc-daygrid-day-frame {
+          display: flex !important;
+          flex-direction: column !important;
+        }
+
+        .fc-month-equal-rows .fc-daygrid-month-view .fc-daygrid-day-events {
+          flex: 1 !important;
+          overflow: hidden !important;
+        }
+
+        /* Compact event styling */
+        .fc-daygrid-event {
+          font-size: 0.75rem !important;
+          padding: 1px 3px !important;
+          margin-bottom: 1px !important;
+          line-height: 1.2 !important;
+        }
+
+        .fc-daygrid-more-link {
+          font-size: 0.75rem !important;
+          padding: 1px 3px !important;
+        }
       `}</style>
+      </div>
     </div>
   );
 }
