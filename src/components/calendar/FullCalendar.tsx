@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, {
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+  useMemo,
+} from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -149,52 +155,6 @@ export function FullCalendarComponent({
     return createFullCalendarFormatters(settings);
   }, [settings]);
 
-  // Update day headers with user's date format
-  const updateDayHeaders = useCallback(() => {
-    if (!calendarRef.current) return;
-
-    const calendarApi = calendarRef.current.getApi();
-    const currentView = calendarApi.view.type;
-
-    const headerCells = document.querySelectorAll(".fc-col-header-cell");
-    headerCells.forEach((cell) => {
-      const textElement = cell.querySelector(".fc-col-header-cell-cushion");
-      if (textElement) {
-        const dataDate = cell.getAttribute("data-date");
-        if (dataDate) {
-          const date = new Date(dataDate);
-          let headerText = "";
-
-          switch (currentView) {
-            case "dayGridMonth":
-              // Month view: just weekday in short form (Mon, Tue, etc.)
-              headerText = format(date, "EEE");
-              break;
-            case "timeGridWeek":
-            case "timeGridDay":
-              // Week and day view: weekday + date (Mon 20, Tue 21, etc.)
-              headerText = format(date, "EEE d");
-              break;
-          }
-
-          textElement.textContent = headerText;
-        }
-      }
-    });
-
-    
-  }, []);
-
-  // Update title when settings change
-  useEffect(() => {
-    if (calendarRef.current) {
-      const calendarApi = calendarRef.current.getApi();
-      const currentDate = calendarApi.getDate();
-      const currentView = calendarApi.view.type;
-      updateDayHeaders();
-    }
-  }, [settings, updateDayHeaders]);
-
   // Get FullCalendar view name from our store view
   const getFullCalendarView = () => {
     switch (view) {
@@ -270,9 +230,6 @@ export function FullCalendarComponent({
     if (dateInfo.start) {
       setCurrentDate(new Date(dateInfo.start));
     }
-
-    // Update day headers
-    setTimeout(() => updateDayHeaders(), 0);
   };
 
   // Handle view change
@@ -295,9 +252,6 @@ export function FullCalendarComponent({
     }
 
     setView(mappedView);
-
-    // Update day headers
-    setTimeout(() => updateDayHeaders(), 0);
   };
 
   // Handle event click
@@ -529,7 +483,6 @@ export function FullCalendarComponent({
         dayMaxEventRows={true}
         dayMaxEvents={true}
         fixedWeekCount={false}
-        
         datesSet={handleDatesSet}
         viewDidMount={handleViewChange}
         eventClick={handleEventClick}
@@ -547,7 +500,7 @@ export function FullCalendarComponent({
           info.el.style.cursor = "";
         }}
         // Week start setting
-        firstDay={settings.weekStart === 'monday' ? 1 : 0}
+        firstDay={settings.weekStart === "monday" ? 1 : 0}
         // Custom formatters based on user settings
         slotLabelFormat={
           settings.timeFormat === "12h"
@@ -565,6 +518,14 @@ export function FullCalendarComponent({
         }}
         dayHeaderFormat={{
           weekday: "short",
+          day: "numeric",
+        }}
+        views={{
+          dayGridMonth: {
+            dayHeaderFormat: {
+              weekday: "short",
+            },
+          },
         }}
       />
 
@@ -746,7 +707,7 @@ export function FullCalendarComponent({
           border-right: none;
         }
 
-        
+
 
         /* Compact event styling */
         .fc-daygrid-event {
