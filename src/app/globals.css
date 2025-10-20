@@ -370,3 +370,8 @@ html body div[data-dnd-kit-drag-overlay] > * > * > * {
     outline-style: none !important;
     outline-width: 0 !important;
 }
+
+/* Remove box-shadow from FullCalendar timegrid events */
+.fc-timegrid-event-harness-inset .fc-timegrid-event {
+    box-shadow: none !important;
+}
