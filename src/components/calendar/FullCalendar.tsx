@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -20,73 +20,91 @@ export function FullCalendarComponent({ sidebarRef }: FullCalendarComponentProps
   const { setEditingEvent, setEditingTask, setCreateDialogData } = useUIStore();
   const calendarRef = useRef<FullCalendar>(null);
   const [, setDraggableInstance] = useState<Draggable | null>(null);
+  const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
 
-  // Convert tasks and events to FullCalendar event format
-  const calendarEvents = [
-    // Convert events
-    ...events.map(event => ({
-      id: event.id,
-      title: event.title,
-      start: event.startTime,
-      end: event.endTime,
-      allDay: event.allDay,
-      backgroundColor: event.color + '20',
-      borderColor: event.color,
-      textColor: event.color,
-      extendedProps: {
-        type: 'event',
-        data: event
-      }
-    })),
-    // Convert tasks
-    ...tasks.filter(task => task.scheduledDate).map(task => {
-      let start = new Date(task.scheduledDate!);
-      let end: Date;
+  // Get color for task category
+  const getTaskColor = useCallback((category: string, completed: boolean) => {
+    const colors: Record<string, { bg: string; border: string; text: string }> = {
+      inbox: { bg: '#6b728020', border: '#6b7280', text: '#6b7280' },
+      overdue: { bg: '#dc262620', border: '#dc2626', text: '#dc2626' },
+      work: { bg: '#2563eb20', border: '#2563eb', text: '#2563eb' },
+      family: { bg: '#16a34a20', border: '#16a34a', text: '#16a34a' },
+      personal: { bg: '#ea580c20', border: '#ea580c', text: '#ea580c' },
+      travel: { bg: '#9333ea20', border: '#9333ea', text: '#9333ea' }
+    };
+    
+    if (completed) {
+      return { bg: '#22c55e20', border: '#22c55e', text: '#22c55e' };
+    }
+    
+    return colors[category] || colors.inbox;
+  }, []);
+
+  // Convert single task to FullCalendar event format
+  const convertTaskToEvent = useCallback((task: Task) => {
+    let start = new Date(task.scheduledDate!);
+    let end: Date;
+    
+    if (task.allDay) {
+      end = new Date(task.scheduledDate!);
+      end.setHours(23, 59, 59, 999);
+    } else if (task.scheduledTime) {
+      const [hours, minutes] = task.scheduledTime.split(':').map(Number);
+      start.setHours(hours, minutes, 0, 0);
       
-      if (task.allDay) {
-        end = new Date(task.scheduledDate!);
-        end.setHours(23, 59, 59, 999);
-      } else if (task.scheduledTime) {
-        const [hours, minutes] = task.scheduledTime.split(':').map(Number);
-        start.setHours(hours, minutes, 0, 0);
-        end = new Date(start);
-        if (task.duration) {
-          end.setMinutes(end.getMinutes() + task.duration);
-        } else {
-          end.setHours(end.getHours() + 1); // Default 1 hour
-        }
+      if (task.duration) {
+        end = new Date(start.getTime() + task.duration * 60 * 1000);
       } else {
-        start.setHours(9, 0, 0, 0); // Default 9 AM
-        end = new Date(start);
-        end.setHours(end.getHours() + 1);
+        end = new Date(start.getTime() + 60 * 60 * 1000); // Default 1 hour
       }
+    } else {
+      end = new Date(start.getTime() + 60 * 60 * 1000); // Default 1 hour
+    }
+    
+    const colors = getTaskColor(task.category, task.completed);
+    
+    return {
+      id: task.id,
+      title: task.title,
+      start,
+      end,
+      allDay: task.allDay,
+      backgroundColor: colors.bg,
+      borderColor: colors.border,
+      textColor: colors.text,
+      extendedProps: {
+        type: 'task',
+        data: task
+      }
+    };
+  }, [getTaskColor]);
 
-      const categoryColors = {
-        work: '#3b82f6',
-        family: '#22c55e',
-        personal: '#f97316',
-        travel: '#a855f7',
-        inbox: '#6b7280'
-      };
+  // Convert single event to FullCalendar event format
+  const convertEventToEvent = useCallback((event: Event) => ({
+    id: event.id,
+    title: event.title,
+    start: event.startTime,
+    end: event.endTime,
+    allDay: event.allDay,
+    backgroundColor: event.color + '20',
+    borderColor: event.color,
+    textColor: event.color,
+    extendedProps: {
+      type: 'event',
+      data: event
+    }
+  }), []);
 
-      return {
-        id: task.id,
-        title: task.title,
-        start,
-        end,
-        allDay: task.allDay,
-        backgroundColor: categoryColors[task.category] + '20',
-        borderColor: categoryColors[task.category],
-        textColor: categoryColors[task.category],
-        extendedProps: {
-          type: 'task',
-          data: task
-        }
-      };
-    })
-  ];
+  // Initialize calendar events
+  useEffect(() => {
+    const newEvents = [
+      ...events.map(convertEventToEvent),
+      ...tasks.filter(task => task.scheduledDate).map(convertTaskToEvent)
+    ];
+    setCalendarEvents(newEvents);
+  }, [events, tasks, convertEventToEvent, convertTaskToEvent]);
 
-  // Map view state to FullCalendar view names
+  // Get FullCalendar view name from our store view
   const getFullCalendarView = () => {
     switch (view) {
       case 'day':
@@ -147,7 +165,7 @@ export function FullCalendarComponent({ sidebarRef }: FullCalendarComponentProps
       });
 
       setDraggableInstance(newDraggable);
-
+      
       return () => {
         if (newDraggable) {
           newDraggable.destroy();
@@ -244,9 +262,13 @@ export function FullCalendarComponent({ sidebarRef }: FullCalendarComponentProps
     } else if (extendedProps.type === 'task') {
       const taskData = extendedProps.data as Task;
       const newScheduledDate = new Date(event.start);
-      const hours = event.start.getHours().toString().padStart(2, '0');
-      const minutes = event.start.getMinutes().toString().padStart(2, '0');
-      const newScheduledTime = `${hours}:${minutes}`;
+      let newScheduledTime: string | undefined;
+      
+      if (!event.allDay) {
+        const hours = event.start.getHours().toString().padStart(2, '0');
+        const minutes = event.start.getMinutes().toString().padStart(2, '0');
+        newScheduledTime = `${hours}:${minutes}`;
+      }
       
       // Calculate new duration in minutes
       const duration = (event.end.getTime() - event.start.getTime()) / (1000 * 60);
@@ -255,6 +277,7 @@ export function FullCalendarComponent({ sidebarRef }: FullCalendarComponentProps
         scheduledDate: newScheduledDate,
         scheduledTime: newScheduledTime,
         duration: Math.round(duration),
+        allDay: event.allDay,
         updatedAt: new Date()
       });
     }
@@ -412,64 +435,95 @@ export function FullCalendarComponent({ sidebarRef }: FullCalendarComponentProps
         
         .fc-task-title {
           flex: 1;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
+          font-size: 12px;
         }
         
         .fc-task-title.completed {
           text-decoration: line-through;
-          opacity: 0.6;
+          opacity: 0.7;
         }
         
-        /* Override FullCalendar styles to match our design */
-        .fc-theme-standard .fc-scrollgrid {
-          border-color: hsl(var(--border));
+        /* FullCalendar styling to match our theme */
+        .fc {
+          font-family: inherit;
         }
         
-        .fc-theme-standard .fc-col-header-cell {
-          background-color: hsl(var(--background));
-          border-color: hsl(var(--border));
+        .fc-toolbar-title {
+          color: hsl(var(--foreground));
+          font-size: 1.25rem;
+          font-weight: 600;
         }
         
-        .fc-theme-standard .fc-daygrid-day-number {
+        .fc-button {
+          background: hsl(var(--muted));
+          color: hsl(var(--muted-foreground));
+          border: 1px solid hsl(var(--border));
+          border-radius: 0.375rem;
+          font-weight: 500;
+        }
+        
+        .fc-button:hover {
+          background: hsl(var(--accent));
+          color: hsl(var(--accent-foreground));
+        }
+        
+        .fc-button-active {
+          background: hsl(var(--primary));
+          color: hsl(var(--primary-foreground));
+          border-color: hsl(var(--primary));
+        }
+        
+        .fc-button:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+        
+        .fc-today-button:disabled {
+          opacity: 0.5;
+        }
+        
+        .fc-daygrid-day-number {
           color: hsl(var(--foreground));
         }
         
-        .fc-theme-standard .fc-day-today {
-          background-color: hsl(var(--primary) / 0.1);
+        .fc-col-header-cell {
+          background: hsl(var(--muted) / 0.3);
+          color: hsl(var(--muted-foreground));
         }
         
-        .fc-theme-standard .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+        .fc-day-today {
+          background: hsl(var(--primary) / 0.1) !important;
+        }
+        
+        .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+          font-weight: 600;
           color: hsl(var(--primary));
-          font-weight: bold;
         }
         
-        .fc-theme-standard .fc-event {
-          border-radius: 6px;
-          font-size: 12px;
-          padding: 2px 4px;
+        .fc-timegrid-slot {
+          border-top: 1px solid hsl(var(--border));
         }
         
-        .fc-theme-standard .fc-event:hover {
+        .fc-timegrid-axis {
+          color: hsl(var(--muted-foreground));
+        }
+        
+        .fc-event {
+          border-radius: 0.25rem;
+          font-size: 0.875rem;
+          padding: 2px 6px;
+        }
+        
+        .fc-event:hover {
           opacity: 0.8;
         }
         
-        .fc-theme-standard .fc-timegrid-slot {
-          border-color: hsl(var(--border));
-        }
-        
-        .fc-theme-standard .fc-timegrid-axis {
-          border-color: hsl(var(--border));
-        }
-        
-        /* Current time indicator */
-        .fc-timegrid-now-indicator-arrow {
-          color: hsl(var(--destructive));
-        }
-        
-        .fc-timegrid-now-indicator-line {
+        .fc-now-indicator {
           border-color: hsl(var(--destructive));
+        }
+        
+        .fc-now-indicator-arrow {
+          border-top-color: hsl(var(--destructive));
         }
       `}</style>
     </div>
