@@ -501,7 +501,7 @@ export function FullCalendarComponent({
 
         .fc-task-title {
           flex: 1;
-          font-size: 12px;
+          font-size: 0.875rem;
         }
 
         .fc-task-title.completed {
