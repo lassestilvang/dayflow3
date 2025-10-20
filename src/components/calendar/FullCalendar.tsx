@@ -473,6 +473,7 @@ export function FullCalendarComponent({
           right: "timeGridDay,timeGridWeek,dayGridMonth",
         }}
         events={calendarEvents}
+        eventResizableFromStart={true}
         editable={true}
         droppable={true}
         nowIndicator={true}
@@ -509,6 +510,9 @@ export function FullCalendarComponent({
             ? { hour: "numeric", minute: "2-digit", hour12: true }
             : { hour: "2-digit", minute: "2-digit", hour12: false }
         }
+        // 15-minute time slots
+        slotDuration="00:15:00"
+        slotLabelInterval="01:00"
         eventTimeFormat={
           settings.timeFormat === "12h"
             ? { hour: "numeric", minute: "2-digit", hour12: true }
