@@ -54,6 +54,16 @@ export function MainLayout({ children }: MainLayoutProps) {
         scheduledTime: createDialogData.time,
         allDay: createDialogData.allDay || false,
       };
+
+      // If endDate is provided, calculate duration for tasks
+      if (createDialogData.endDate && !createDialogData.allDay) {
+        const durationMs = createDialogData.endDate.getTime() - createDialogData.date.getTime();
+        const durationMinutes = Math.round(durationMs / (1000 * 60));
+        if (durationMinutes > 0) {
+          (taskData as any).duration = durationMinutes;
+        }
+      }
+
       setInitialFormData({ type: 'task', data: taskData });
       setCreateDialogData(null);
       setShowUnifiedDialog(true);

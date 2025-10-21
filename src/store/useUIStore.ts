@@ -13,6 +13,7 @@ interface UIStore {
     date: Date;
     time?: string;
     allDay?: boolean;
+    endDate?: Date;
   } | null;
   
   // Actions
@@ -26,7 +27,7 @@ interface UIStore {
   setEditingTask: (task: Task | null) => void;
   setEditingEvent: (event: Event | null) => void;
   
-  setCreateDialogData: (data: { date: Date; time?: string; allDay?: boolean } | null) => void;
+  setCreateDialogData: (data: { date: Date; time?: string; allDay?: boolean; endDate?: Date } | null) => void;
 }
 
 interface Notification {

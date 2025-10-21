@@ -5,7 +5,6 @@ import React, {
   useRef,
   useState,
   useCallback,
-  useMemo,
 } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -21,8 +20,7 @@ import {
   useSettingsStore,
 } from "@/store";
 import { Task, Event } from "@/types";
-import { createFullCalendarFormatters, formatDate } from "@/lib/dateUtils";
-import { format } from "date-fns";
+import { createFullCalendarFormatters } from "@/lib/dateUtils";
 
 interface FullCalendarComponentProps {
   sidebarRef?: React.RefObject<HTMLElement | null>;
@@ -151,10 +149,7 @@ export function FullCalendarComponent({
     setCalendarEvents(newEvents);
   }, [events, tasks, convertEventToEvent, convertTaskToEvent]);
 
-  // Create formatters based on user settings
-  const formatters = React.useMemo(() => {
-    return createFullCalendarFormatters(settings);
-  }, [settings]);
+  
 
   // Get FullCalendar view name from our store view
   const getFullCalendarView = () => {
@@ -402,6 +397,34 @@ export function FullCalendarComponent({
     });
   };
 
+  // Handle date selection for creating new items
+  const handleSelect = (selectInfo: any) => {
+    const { start, end, allDay } = selectInfo;
+    
+    // Calculate duration for non-all-day selections
+    let time: string | undefined;
+    if (!allDay) {
+      const hours = start.getHours().toString().padStart(2, "0");
+      const minutes = start.getMinutes().toString().padStart(2, "0");
+      time = `${hours}:${minutes}`;
+    }
+
+    setCreateDialogData({
+      date: start,
+      allDay,
+      time,
+      endDate: end,
+    });
+  };
+
+  // Clear calendar selection
+  const clearCalendarSelection = useCallback(() => {
+    const calendarApi = calendarRef.current?.getApi();
+    if (calendarApi) {
+      calendarApi.unselect();
+    }
+  }, []);
+
   // Custom event rendering for tasks with checkboxes
   const handleEventContent = (eventInfo: any) => {
     const { extendedProps } = eventInfo.event;
@@ -482,6 +505,9 @@ export function FullCalendarComponent({
         eventResizableFromStart={true}
         editable={true}
         droppable={true}
+        selectable={true}
+        selectMirror={true}
+        unselectAuto={false}
         nowIndicator={true}
         height="100%"
         contentHeight="100%"
@@ -497,6 +523,7 @@ export function FullCalendarComponent({
         eventResize={handleEventResize}
         drop={handleDrop}
         dateClick={handleDateClick}
+        select={handleSelect}
         eventContent={handleEventContent}
         eventMouseEnter={(info) => {
           // Add hover effect
@@ -852,6 +879,19 @@ export function FullCalendarComponent({
         .dark .fc-list-event {
           background: var(--card);
           border-color: var(--border);
+        }
+
+        /* Selection styling */
+        .fc-highlight {
+          background: color-mix(in oklch, var(--primary) 20%, transparent) !important;
+          border: 1px solid var(--primary);
+          border-radius: 0.25rem;
+        }
+
+        .fc-cell-overlay {
+          background: color-mix(in oklch, var(--primary) 15%, transparent) !important;
+          border: 1px dashed var(--primary);
+          border-radius: 0.25rem;
         }
       `}</style>
     </div>
