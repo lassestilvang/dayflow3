@@ -543,7 +543,7 @@ export function FullCalendarComponent({
 
       <style jsx global>{`
         .fc .fc-toolbar.fc-header-toolbar {
-          margin: 0.69em 0;
+          margin: 0.69em;
         }
 
         .fc-task-event {
