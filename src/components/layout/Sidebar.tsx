@@ -206,12 +206,7 @@ export const Sidebar = forwardRef<HTMLDivElement, {}>((props, ref) => {
       const [hours, minutes] = task.scheduledTime.split(':').map(Number);
       scheduledDateTime.setHours(hours, minutes, 0, 0);
       
-      if (task.duration) {
-        scheduledDateTime.setMinutes(scheduledDateTime.getMinutes() + task.duration);
-        return `Ended ${formatDateTime(scheduledDateTime, settings)}`;
-      } else {
-        return `Scheduled ${formatDateTime(scheduledDateTime, settings)}`;
-      }
+      return formatDateTime(scheduledDateTime, settings);
     }
     
     // Check all-day scheduled date
@@ -219,7 +214,7 @@ export const Sidebar = forwardRef<HTMLDivElement, {}>((props, ref) => {
       const today = startOfDay(now);
       const taskDate = startOfDay(task.scheduledDate);
       if (taskDate < today) {
-        return `Scheduled ${formatDate(taskDate, settings)}`;
+        return formatDate(taskDate, settings);
       }
     }
     
