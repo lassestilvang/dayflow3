@@ -226,10 +226,10 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(({ onResizeMouse
   };
 
   return (
-    <div className="relative flex">
-      <div ref={ref} className="bg-background border-r border-border h-full flex flex-col" style={{ width: '100%' }}>
+    <div className="relative flex h-full">
+      <div ref={ref} className="bg-background border-r border-border h-full flex flex-col flex-1" style={{ width: '100%' }}>
       {/* Header */}
-      <div className="p-4 border-b border-border">
+      <div className="p-4 border-b border-border flex-shrink-0">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold">Dayflow</h1>
           <ThemeToggle />
@@ -237,7 +237,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(({ onResizeMouse
       </div>
 
       {/* Quick Actions */}
-      <div className="p-4">
+      <div className="p-4 flex-shrink-0">
         <Button 
           className="w-full justify-start" 
           variant="default"
@@ -252,7 +252,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(({ onResizeMouse
       </div>
 
       {/* Task Categories */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto min-h-0">
         <div className="p-4">
           <h3 className="text-sm font-medium text-muted-foreground mb-3">Tasks</h3>
           <div className="space-y-1">
@@ -438,7 +438,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(({ onResizeMouse
       </div>
 
       {/* User Profile */}
-      <div className="p-4 border-t border-border">
+      <div className="p-4 border-t border-border flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
             <span className="text-sm font-medium">U</span>
