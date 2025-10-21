@@ -87,18 +87,18 @@ export const Sidebar = forwardRef<HTMLDivElement, {}>((props, ref) => {
   
   const categories: TaskCategory[] = [
     {
-      id: 'inbox',
-      name: 'Inbox',
-      icon: <CheckSquare className="h-4 w-4" />,
-      color: 'text-gray-600',
-      count: getTasksByCategory('inbox').length,
-    },
-    {
       id: 'overdue',
       name: 'Overdue',
       icon: <Clock className="h-4 w-4" />,
       color: 'text-red-600',
       count: overdueCount,
+    },
+    {
+      id: 'inbox',
+      name: 'Inbox',
+      icon: <CheckSquare className="h-4 w-4" />,
+      color: 'text-gray-600',
+      count: getTasksByCategory('inbox').length,
     },
     {
       id: 'work',
