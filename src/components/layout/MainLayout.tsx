@@ -1,9 +1,10 @@
 'use client'; 
 
-import React, { ReactNode, useState, useEffect, useRef, cloneElement } from 'react';
+import React, { ReactNode, useState, useEffect, useRef } from 'react';
 import { DndContext, 
          pointerWithin, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { Sidebar } from './Sidebar';
+import { useResizable } from '@/hooks/useResizable';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { UnifiedForm } from '@/components/forms/UnifiedForm';
 
@@ -30,6 +31,12 @@ export function MainLayout({ children }: MainLayoutProps) {
   const [showUnifiedDialog, setShowUnifiedDialog] = useState(false);
   const [initialFormData, setInitialFormData] = useState<{ type: 'task' | 'event'; data: Partial<Task> | Partial<Event> } | null>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
+  const { width, isResizing, handleMouseDown } = useResizable({
+    defaultWidth: 256,
+    minWidth: 200,
+    maxWidth: 400,
+    storageKey: 'dayflow-sidebar-width'
+  });
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -170,17 +177,24 @@ export function MainLayout({ children }: MainLayoutProps) {
       sensors={sensors}
       collisionDetection={pointerWithin}
     >
-      <div className="h-screen flex bg-background">
-        {/* Sidebar */}
-        <div className={cn(
-          'transition-all duration-300 ease-in-out',
-          sidebarOpen ? 'w-64' : 'w-0'
+      <div className={cn(
+          'h-screen flex bg-background',
+          isResizing && 'cursor-col-resize'
         )}>
-          <div className={cn(
-            'h-full transition-all duration-300',
-            sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
-          )}>
-            <Sidebar ref={sidebarRef} />
+        {/* Sidebar */}
+        <div 
+          className={cn(
+            'transition-all duration-300 ease-in-out relative',
+            sidebarOpen ? 'opacity-100' : 'w-0 opacity-0 pointer-events-none'
+          )}
+          style={{ 
+            width: sidebarOpen ? `${width}px` : '0px',
+            minWidth: sidebarOpen ? '200px' : '0px',
+            maxWidth: sidebarOpen ? '400px' : '0px'
+          }}
+        >
+          <div className="h-full">
+            <Sidebar ref={sidebarRef} onResizeMouseDown={handleMouseDown} />
           </div>
         </div>
 

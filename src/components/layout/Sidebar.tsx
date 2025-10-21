@@ -70,7 +70,11 @@ function DraggableTask({ task, children }: DraggableTaskProps) {
   );
 }
 
-export const Sidebar = forwardRef<HTMLDivElement, {}>((props, ref) => {
+interface SidebarProps {
+  onResizeMouseDown?: (e: React.MouseEvent) => void;
+}
+
+export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(({ onResizeMouseDown }, ref) => {
   const { data: session } = useSession();
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
   const [expandedCompletedCategories, setExpandedCompletedCategories] = useState<string[]>([]);
@@ -222,7 +226,8 @@ export const Sidebar = forwardRef<HTMLDivElement, {}>((props, ref) => {
   };
 
   return (
-    <div ref={ref} className="w-64 bg-background border-r border-border h-full flex flex-col">
+    <div className="relative flex">
+      <div ref={ref} className="bg-background border-r border-border h-full flex flex-col" style={{ width: '100%' }}>
       {/* Header */}
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between">
@@ -476,6 +481,16 @@ export const Sidebar = forwardRef<HTMLDivElement, {}>((props, ref) => {
         settings={settings}
         onSave={updateSettings}
       />
+      </div>
+      
+      {/* Resize Handle */}
+      <div
+        className="absolute top-0 right-0 w-1 h-full bg-transparent hover:bg-border cursor-col-resize transition-colors z-10 group"
+        onMouseDown={onResizeMouseDown}
+        style={{ right: '-1px' }}
+      >
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1 h-8 bg-border rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+      </div>
     </div>
   );
 });
