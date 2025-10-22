@@ -8,6 +8,7 @@ interface UIStore {
   notifications: Notification[];
   editingTask: Task | null;
   editingEvent: Event | null;
+  hideScheduledTasks: boolean;
   
   createDialogData: {
     date: Date;
@@ -29,6 +30,7 @@ interface UIStore {
   
   setCreateDialogData: (data: { date: Date; time?: string; allDay?: boolean; endDate?: Date } | null) => void;
   clearCalendarSelection: () => void;
+  setHideScheduledTasks: (hide: boolean) => void;
 }
 
 interface Notification {
@@ -46,6 +48,7 @@ export const useUIStore = create<UIStore>((set, get) => ({
   notifications: [],
   editingTask: null,
   editingEvent: null,
+  hideScheduledTasks: false,
   
   createDialogData: null,
 
@@ -92,4 +95,6 @@ export const useUIStore = create<UIStore>((set, get) => ({
     const event = new CustomEvent('clearCalendarSelection', { bubbles: true });
     window.dispatchEvent(event);
   },
+  
+  setHideScheduledTasks: (hide) => set({ hideScheduledTasks: hide }),
 }));

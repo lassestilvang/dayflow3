@@ -26,6 +26,7 @@ interface TaskStore {
   getTasksByList: (listId: string) => Task[];
   getCompletedTasksByList: (listId: string) => Task[];
   getOverdueTasks: () => Task[];
+  getUnscheduledTasksByList: (listId: string) => Task[];
   getTasksForDate: (date: Date) => Task[];
   getCompletedTasks: () => Task[];
   getIncompleteTasks: () => Task[];
@@ -306,5 +307,14 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   getIncompleteTasks: () => {
     const { tasks } = get();
     return tasks.filter((task) => !task.completed);
+  },
+  
+  getUnscheduledTasksByList: (listId) => {
+    const { tasks } = get();
+    return tasks.filter((task) => 
+      task.listId === listId && 
+      !task.completed && 
+      !task.scheduledDate
+    );
   },
 }));

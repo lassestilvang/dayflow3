@@ -4,14 +4,13 @@ import { useState, forwardRef, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { startOfDay } from 'date-fns';
 import { 
-  Calendar, 
-  CheckSquare, 
   Clock, 
-  Users, 
   Settings,
   ChevronDown,
   ChevronRight,
-  GripVertical
+  GripVertical,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -85,11 +84,11 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(({ onResizeMouse
   const [showUnifiedDialog, setShowUnifiedDialog] = useState(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [formType, setFormType] = useState<'task' | 'event'>('task');
-  const { getTasksByList, getCompletedTasksByList, getOverdueTasks, addTask, updateTask } = useTaskStore();
+  const { getTasksByList, getCompletedTasksByList, getOverdueTasks, getUnscheduledTasksByList, addTask, updateTask } = useTaskStore();
   const { addEvent } = useEventStore();
-  const { setEditingTask, clearCalendarSelection } = useUIStore();
+  const { setEditingTask, clearCalendarSelection, hideScheduledTasks, setHideScheduledTasks } = useUIStore();
   const { settings, updateSettings } = useSettingsStore();
-  const { lists, setLists, addList, getDefaultList } = useListStore();
+  const { lists, setLists, getDefaultList } = useListStore();
   const [showListDialog, setShowListDialog] = useState(false);
   
   // Fetch lists on component mount
@@ -119,7 +118,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(({ onResizeMouse
     name: list.name,
     icon: <span className="text-sm">{getIconEmoji(list.icon)}</span>,
     color: `text-[${list.color}]`,
-    count: getTasksByList(list.id).length,
+    count: hideScheduledTasks ? getUnscheduledTasksByList(list.id).length : getTasksByList(list.id).length,
     isDefault: list.isDefault,
   }));
 
@@ -257,15 +256,27 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(({ onResizeMouse
         <div className="p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-medium text-muted-foreground">Tasks</h3>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setShowListDialog(true)}
-              className="h-6 px-2 text-xs"
-            >
-              <Plus className="h-3 w-3 mr-1" />
-              Add List
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setHideScheduledTasks(!hideScheduledTasks)}
+                className="h-6 px-2 text-xs"
+                title={hideScheduledTasks ? "Show scheduled tasks" : "Hide scheduled tasks"}
+              >
+                {hideScheduledTasks ? <Eye className="h-3 w-3 mr-1" /> : <EyeOff className="h-3 w-3 mr-1" />}
+                {hideScheduledTasks ? "Show" : "Hide"}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setShowListDialog(true)}
+                className="h-6 px-2 text-xs"
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Add List
+              </Button>
+            </div>
           </div>
           <div className="space-y-1">
             {categories.map((category) => (
@@ -346,7 +357,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(({ onResizeMouse
                         )}
                       </>
                     ) : (
-                      getTasksByList(category.id).map((task) => (
+                      (hideScheduledTasks ? getUnscheduledTasksByList(category.id) : getTasksByList(category.id)).map((task) => (
                         <DraggableTask key={task.id} task={task}>
                           <div
                             className="text-xs p-2 rounded hover:bg-accent cursor-pointer flex items-center gap-2"
