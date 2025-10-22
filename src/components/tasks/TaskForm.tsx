@@ -14,6 +14,7 @@ import { Task, Subtask } from '@/types';
 import { cn } from '@/lib/utils';
 import { useListStore } from '@/store/useListStore';
 import { useEffect } from 'react';
+import { getIconEmoji } from '@/lib/iconUtils';
 
 interface TaskFormProps {
   task?: Task;
@@ -145,6 +146,7 @@ export function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
                   {lists.map((list) => (
                     <SelectItem key={list.id} value={list.id}>
                       <div className="flex items-center gap-2">
+                        <span className="text-sm">{getIconEmoji(list.icon)}</span>
                         <div 
                           className="w-3 h-3 rounded-full" 
                           style={{ backgroundColor: list.color }}

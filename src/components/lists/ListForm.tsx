@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useListStore } from "@/store/useListStore";
 import { toast } from "sonner";
+import { ICONS } from "@/lib/iconUtils";
 
 interface ListFormProps {
   isOpen: boolean;
@@ -19,20 +20,7 @@ interface ListFormProps {
   };
 }
 
-const ICONS = [
-  { value: "CheckSquare", label: "Check Square", icon: "☑️" },
-  { value: "Circle", label: "Circle", icon: "⭕" },
-  { value: "Star", label: "Star", icon: "⭐" },
-  { value: "Heart", label: "Heart", icon: "❤️" },
-  { value: "Flag", label: "Flag", icon: "🚩" },
-  { value: "Bookmark", label: "Bookmark", icon: "🔖" },
-  { value: "Tag", label: "Tag", icon: "🏷️" },
-  { value: "Folder", label: "Folder", icon: "📁" },
-  { value: "Home", label: "Home", icon: "🏠" },
-  { value: "Work", label: "Work", icon: "💼" },
-  { value: "Users", label: "Users", icon: "👥" },
-  { value: "Calendar", label: "Calendar", icon: "📅" },
-];
+
 
 const COLORS = [
   { value: "#6b7280", label: "Gray", class: "bg-gray-500" },

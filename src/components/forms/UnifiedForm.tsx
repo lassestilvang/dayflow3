@@ -14,6 +14,7 @@ import { Task, Event, Subtask, Attendee } from '@/types';
 import { cn } from '@/lib/utils';
 import { useListStore } from '@/store/useListStore';
 import { useEffect } from 'react';
+import { getIconEmoji } from '@/lib/iconUtils';
 
 type FormType = 'task' | 'event';
 
@@ -247,6 +248,7 @@ export function UnifiedForm({ type: initialType = 'task', task, event, onSubmit,
                       {lists.map((list) => (
                         <SelectItem key={list.id} value={list.id}>
                           <div className="flex items-center gap-2">
+                            <span className="text-sm">{getIconEmoji(list.icon)}</span>
                             <div 
                               className="w-3 h-3 rounded-full" 
                               style={{ backgroundColor: list.color }}

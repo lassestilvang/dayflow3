@@ -28,6 +28,7 @@ import { Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDraggable } from '@dnd-kit/core';
 import { formatDate, formatDateTime } from '@/lib/dateUtils';
+import { getIconEmoji } from '@/lib/iconUtils';
 
 interface TaskCategory {
   id: string;
@@ -116,7 +117,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(({ onResizeMouse
   const listCategories = lists.map(list => ({
     id: list.id,
     name: list.name,
-    icon: <CheckSquare className="h-4 w-4" />,
+    icon: <span className="text-sm">{getIconEmoji(list.icon)}</span>,
     color: `text-[${list.color}]`,
     count: getTasksByList(list.id).length,
     isDefault: list.isDefault,
