@@ -285,7 +285,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(({ onResizeMouse
                   </button>
                   <div className="flex items-center gap-2">
                     {category.count > 0 && (
-                      <Badge variant="secondary" className="text-xs">
+<Badge variant="secondary" className="text-xs opacity-100 group-hover:opacity-0 transition-opacity">
                         {category.count}
                       </Badge>
                     )}
