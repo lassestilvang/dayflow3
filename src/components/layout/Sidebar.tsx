@@ -270,7 +270,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(({ onResizeMouse
           <div className="space-y-1">
             {categories.map((category) => (
               <div key={category.id}>
-                <div className="group flex items-center justify-between p-2 rounded-lg hover:bg-accent transition-colors">
+                <div className="group relative flex items-center justify-between p-2 rounded-lg hover:bg-accent transition-colors">
                   <button
                     onClick={() => toggleCategory(category.id)}
                     className="flex items-center gap-3 flex-1"

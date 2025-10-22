@@ -55,7 +55,7 @@ export function ListManager({ listId, listName, isDefault = false }: ListManager
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity absolute right-2">
             <MoreHorizontal className="h-3 w-3" />
           </Button>
         </DropdownMenuTrigger>
