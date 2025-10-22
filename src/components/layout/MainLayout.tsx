@@ -24,7 +24,8 @@ export function MainLayout({ children }: MainLayoutProps) {
     createDialogData,
     setEditingTask, 
     setEditingEvent,
-    setCreateDialogData
+    setCreateDialogData,
+    clearCalendarSelection
   } = useUIStore();
   const { updateTask, addTask, deleteTask } = useTaskStore();
   const { updateEvent, addEvent, deleteEvent } = useEventStore();
@@ -72,6 +73,8 @@ export function MainLayout({ children }: MainLayoutProps) {
 
   
 
+  
+
   const handleUnifiedUpdate = async (data: Partial<Task> | Partial<Event>, type: 'task' | 'event') => {
     try {
       if (type === 'task') {
@@ -98,10 +101,12 @@ export function MainLayout({ children }: MainLayoutProps) {
           // Delete the original event
           await deleteEvent(editingEvent.id);
           setEditingEvent(null);
+          clearCalendarSelection();
         } else if (editingTask) {
           // Regular task update
           await updateTask(editingTask.id, taskData);
           setEditingTask(null);
+          clearCalendarSelection();
         }
       } else {
         const eventData = data as Partial<Event>;
@@ -133,10 +138,12 @@ export function MainLayout({ children }: MainLayoutProps) {
           // Delete the original task
           await deleteTask(editingTask.id);
           setEditingTask(null);
+          clearCalendarSelection();
         } else if (editingEvent) {
           // Regular event update
           await updateEvent(editingEvent.id, eventData as Partial<Event>);
           setEditingEvent(null);
+          clearCalendarSelection();
         }
       }
     } catch (error) {
@@ -180,6 +187,7 @@ export function MainLayout({ children }: MainLayoutProps) {
     }
     setShowUnifiedDialog(false);
     setInitialFormData(null);
+    clearCalendarSelection();
   };
 
   return (
@@ -221,7 +229,12 @@ export function MainLayout({ children }: MainLayoutProps) {
       </div>
 
       {/* Task Edit Dialog */}
-      <Dialog open={!!editingTask} onOpenChange={(open) => !open && setEditingTask(null)}>
+      <Dialog open={!!editingTask} onOpenChange={(open) => {
+        if (!open) {
+          setEditingTask(null);
+          clearCalendarSelection();
+        }
+      }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Task</DialogTitle>
@@ -231,14 +244,22 @@ export function MainLayout({ children }: MainLayoutProps) {
               type="task"
               task={editingTask}
               onSubmit={handleUnifiedUpdate}
-              onCancel={() => setEditingTask(null)}
+              onCancel={() => {
+                setEditingTask(null);
+                clearCalendarSelection();
+              }}
             />
           )}
         </DialogContent>
       </Dialog>
 
       {/* Event Edit Dialog */}
-      <Dialog open={!!editingEvent} onOpenChange={(open) => !open && setEditingEvent(null)}>
+      <Dialog open={!!editingEvent} onOpenChange={(open) => {
+        if (!open) {
+          setEditingEvent(null);
+          clearCalendarSelection();
+        }
+      }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Event</DialogTitle>
@@ -248,7 +269,10 @@ export function MainLayout({ children }: MainLayoutProps) {
               type="event"
               event={editingEvent}
               onSubmit={handleUnifiedUpdate}
-              onCancel={() => setEditingEvent(null)}
+              onCancel={() => {
+                setEditingEvent(null);
+                clearCalendarSelection();
+              }}
             />
           )}
         </DialogContent>
@@ -257,7 +281,13 @@ export function MainLayout({ children }: MainLayoutProps) {
       
 
       {/* Unified Create Dialog */}
-      <Dialog open={showUnifiedDialog} onOpenChange={setShowUnifiedDialog}>
+      <Dialog open={showUnifiedDialog} onOpenChange={(open) => {
+        setShowUnifiedDialog(open);
+        // Clear calendar selection when dialog is closed
+        if (!open) {
+          clearCalendarSelection();
+        }
+      }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
@@ -270,9 +300,10 @@ export function MainLayout({ children }: MainLayoutProps) {
               task={initialFormData.type === 'task' ? initialFormData.data as Task : undefined}
               event={initialFormData.type === 'event' ? initialFormData.data as Event : undefined}
               onSubmit={handleCreate}
-              onCancel={() => {
-                setShowUnifiedDialog(false);
+onCancel={() => {
                 setInitialFormData(null);
+                setShowUnifiedDialog(false);
+                clearCalendarSelection();
               }}
             />
           )}

@@ -1,11 +1,6 @@
 "use client";
 
-import React, {
-  useEffect,
-  useRef,
-  useState,
-  useCallback,
-} from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -32,7 +27,7 @@ export function FullCalendarComponent({
   const { view, setCurrentDate, setView } = useCalendarStore();
   const { events, updateEvent } = useEventStore();
   const { tasks, updateTask } = useTaskStore();
-  const { setEditingEvent, setEditingTask, setCreateDialogData } = useUIStore();
+  const { setEditingEvent, setEditingTask, setCreateDialogData, clearCalendarSelection: clearSelectionFromStore } = useUIStore();
   const { settings } = useSettingsStore();
   const calendarRef = useRef<FullCalendar>(null);
   const [, setDraggableInstance] = useState<Draggable | null>(null);
@@ -148,8 +143,6 @@ export function FullCalendarComponent({
     console.log("Raw tasks:", tasks);
     setCalendarEvents(newEvents);
   }, [events, tasks, convertEventToEvent, convertTaskToEvent]);
-
-  
 
   // Get FullCalendar view name from our store view
   const getFullCalendarView = () => {
@@ -400,7 +393,7 @@ export function FullCalendarComponent({
   // Handle date selection for creating new items
   const handleSelect = (selectInfo: any) => {
     const { start, end, allDay } = selectInfo;
-    
+
     // Calculate duration for non-all-day selections
     let time: string | undefined;
     if (!allDay) {
@@ -488,7 +481,21 @@ export function FullCalendarComponent({
         });
       }
     };
-  }, [tasks, updateTask]);
+
+    // Listen for clear calendar selection event
+    const handleClearSelection = () => {
+      clearCalendarSelection();
+    };
+
+    window.addEventListener("clearCalendarSelection", handleClearSelection);
+
+    return () => {
+      window.removeEventListener(
+        "clearCalendarSelection",
+        handleClearSelection,
+      );
+    };
+  }, [tasks, updateTask, clearCalendarSelection]);
 
   return (
     <div className="h-full bg-background">

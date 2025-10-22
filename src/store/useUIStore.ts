@@ -28,6 +28,7 @@ interface UIStore {
   setEditingEvent: (event: Event | null) => void;
   
   setCreateDialogData: (data: { date: Date; time?: string; allDay?: boolean; endDate?: Date } | null) => void;
+  clearCalendarSelection: () => void;
 }
 
 interface Notification {
@@ -85,4 +86,10 @@ export const useUIStore = create<UIStore>((set, get) => ({
   
   
   setCreateDialogData: (data) => set({ createDialogData: data }),
+  
+  clearCalendarSelection: () => {
+    // This will be implemented as a custom event for now
+    const event = new CustomEvent('clearCalendarSelection', { bubbles: true });
+    window.dispatchEvent(event);
+  },
 }));

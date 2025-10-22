@@ -83,7 +83,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(({ onResizeMouse
   const [formType, setFormType] = useState<'task' | 'event'>('task');
   const { getTasksByCategory, getCompletedTasksByCategory, getOverdueTasks, addTask, updateTask } = useTaskStore();
   const { addEvent } = useEventStore();
-  const { setEditingTask } = useUIStore();
+  const { setEditingTask, clearCalendarSelection } = useUIStore();
   const { settings, updateSettings } = useSettingsStore();
   
   const overdueTasks = getOverdueTasks();
@@ -185,6 +185,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(({ onResizeMouse
       });
     }
     setShowUnifiedDialog(false);
+    clearCalendarSelection();
   };
 
   const handleTaskCompleteToggle = async (taskId: string, completed: boolean, e: React.MouseEvent) => {
@@ -459,7 +460,13 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(({ onResizeMouse
       </div>
 
       {/* Unified Creation Dialog */}
-      <Dialog open={showUnifiedDialog} onOpenChange={setShowUnifiedDialog}>
+      <Dialog open={showUnifiedDialog} onOpenChange={(open) => {
+        setShowUnifiedDialog(open);
+        // Clear calendar selection when dialog is closed
+        if (!open) {
+          clearCalendarSelection();
+        }
+      }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
@@ -469,7 +476,10 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(({ onResizeMouse
           <UnifiedForm
             type={formType}
             onSubmit={handleCreate}
-            onCancel={() => setShowUnifiedDialog(false)}
+            onCancel={() => {
+                setShowUnifiedDialog(false);
+                clearCalendarSelection();
+              }}
           />
         </DialogContent>
       </Dialog>
