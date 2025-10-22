@@ -1,0 +1,18 @@
+# Default code owners for the repository
+* @lassestilvang
+
+# Specific areas and their owners
+.github/ @lassestilvang
+src/auth/ @lassestilvang
+src/api/ @lassestilvang
+src/components/ @lassestilvang
+src/lib/ @lassestilvang
+tests/ @lassestilvang
+
+# Documentation
+*.md @lassestilvang
+
+# Configuration files
+*.config.* @lassestilvang
+package.json @lassestilvang
+pnpm-lock.yaml @lassestilvang
