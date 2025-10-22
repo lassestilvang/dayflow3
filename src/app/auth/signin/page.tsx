@@ -1,9 +1,10 @@
-import { signIn } from '@/lib/auth';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 import { SignInForm } from '@/components/auth/SignInForm';
 import { Suspense } from 'react';
+import { signIn } from 'next-auth/react';
 
 export default function SignInPage() {
   return (
@@ -32,26 +33,20 @@ export default function SignInPage() {
           </div>
 
           <div className="space-y-3">
-            <form
-              action={async () => {
-                'use server';
-                await signIn('google');
-              }}
+            <Button 
+              className="w-full" 
+              variant="outline"
+              onClick={() => signIn('google')}
             >
-              <Button type="submit" className="w-full" variant="outline">
-                Continue with Google
-              </Button>
-            </form>
-            <form
-              action={async () => {
-                'use server';
-                await signIn('github');
-              }}
+              Continue with Google
+            </Button>
+            <Button 
+              className="w-full" 
+              variant="outline"
+              onClick={() => signIn('github')}
             >
-              <Button type="submit" className="w-full" variant="outline">
-                Continue with GitHub
-              </Button>
-            </form>
+              Continue with GitHub
+            </Button>
           </div>
 
           <div className="text-center text-sm">
