@@ -1,0 +1,26 @@
+name: Dependency Review
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v3
+        with:
+          fail-on-severity: moderate
+          allow-ghsas: |
+            GHSA-xxxx-xxxx-xxxx
+          deny-licenses: |
+            GPL-2.0
+            GPL-3.0
+          license-check: true
+          base-ref: ${{ github.event.pull_request.base.ref }}
+          head-ref: ${{ github.event.pull_request.head.ref }}
