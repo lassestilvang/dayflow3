@@ -1,0 +1,44 @@
+# Labeler configuration for GitHub Actions
+# Add labels to PRs based on changed files
+
+"dependencies":
+  - any: ['package.json', 'pnpm-lock.yaml', 'yarn.lock', 'npm-shrinkwrap.json']
+
+"documentation":
+  - any: ['*.md', 'docs/**/*']
+
+"ci/cd":
+  - any: ['.github/**/*']
+
+"database":
+  - any: ['drizzle.config.ts', '**/migrate*.ts', '**/schema.ts']
+
+"auth":
+  - any: ['**/auth/**/*', '**/auth.ts', '**/config.ts']
+
+"api":
+  - any: ['**/api/**/*']
+
+"components":
+  - any: ['src/components/**/*']
+
+"hooks":
+  - any: ['src/hooks/**/*']
+
+"store":
+  - any: ['src/store/**/*']
+
+"lib":
+  - any: ['src/lib/**/*']
+
+"types":
+  - any: ['src/types/**/*', 'types/**/*']
+
+"tests":
+  - any: ['tests/**/*', '**/*.test.*', '**/*.spec.*']
+
+"styles":
+  - any: ['**/*.css', '**/*.scss', '**/*.module.css', 'tailwind.config.*']
+
+"config":
+  - any: ['*.config.*', 'next.config.*', 'tsconfig.*', 'eslint.config.*']
