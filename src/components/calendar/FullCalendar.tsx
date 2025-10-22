@@ -573,6 +573,11 @@ export function FullCalendarComponent({
           margin: 0.69em;
         }
 
+        .fc .fc-highlight {
+          background: none;
+          border: none;
+        }
+
         .fc-task-event {
           display: flex;
           align-items: center;
