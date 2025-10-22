@@ -3,6 +3,37 @@ import { UnifiedForm } from '@/components/forms/UnifiedForm';
 import { TaskList } from '@/components/tasks/TaskList';
 import { Task } from '@/types';
 
+// Mock the list store
+jest.mock('@/store', () => ({
+  useTaskStore: jest.fn(),
+  useEventStore: jest.fn(),
+  useCalendarStore: jest.fn(),
+  useUIStore: jest.fn(),
+  useSettingsStore: () => ({
+    settings: {
+      dateFormat: 'MMM dd, yyyy',
+      timeFormat: '12h'
+    }
+  }),
+  useListStore: () => ({
+    lists: [
+      { id: 'list-1', name: 'work', color: '#3b82f6', icon: 'briefcase' },
+      { id: 'list-2', name: 'personal', color: '#10b981', icon: 'user' }
+    ],
+    setLists: jest.fn(),
+    getDefaultList: jest.fn()
+  })
+}));
+
+// Mock fetch
+global.fetch = jest.fn().mockResolvedValue({
+  ok: true,
+  json: async () => [
+    { id: 'list-1', name: 'work', color: '#3b82f6', icon: 'briefcase' },
+    { id: 'list-2', name: 'personal', color: '#10b981', icon: 'user' }
+  ]
+});
+
 // Mock tasks for testing
 const mockTasks: Task[] = [
   {
@@ -42,7 +73,7 @@ describe('UnifiedForm', () => {
 
     expect(screen.getByLabelText(/title/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/description/i)).toBeInTheDocument();
-    expect(screen.getByText(/category/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/list/i)).toHaveLength(2); // Label and placeholder
     expect(screen.getByText(/priority/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /create task/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
@@ -232,7 +263,7 @@ describe('TaskList', () => {
     expect(screen.getByText('work')).toBeInTheDocument(); // Category
     expect(screen.getByText('medium')).toBeInTheDocument(); // Priority
     expect(screen.getByText('Jan 25, 2024')).toBeInTheDocument(); // Due date
-    expect(screen.getByText('Jan 22, 2024 at 10:00')).toBeInTheDocument(); // Scheduled date and time
+    expect(screen.getByText('Jan 22, 2024 at 10:00 AM')).toBeInTheDocument(); // Scheduled date and time
     expect(screen.getByText('60min')).toBeInTheDocument(); // Duration
     expect(screen.getByText('Subtasks (1/2)')).toBeInTheDocument(); // Subtasks count
   });
