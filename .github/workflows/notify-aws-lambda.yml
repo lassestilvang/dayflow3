@@ -1,0 +1,46 @@
+name: AWS Lambda Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published"]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  aws-lambda-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.AWS_ACCESS_KEY_ID != '' && secrets.AWS_SECRET_ACCESS_KEY != '' }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Invoke AWS Lambda function
+        run: |
+          payload=$(cat <<EOF
+          {
+            "event": "${{ github.event_name }}",
+            "action": "${{ github.event.action }}",
+            "repository": "${{ github.repository }}",
+            "sender": "${{ github.actor }}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "data": ${{ toJSON(github.event) }}
+          }
+          EOF
+          )
+          
+          aws lambda invoke \
+            --function-name ${{ secrets.AWS_LAMBDA_FUNCTION_NAME }} \
+            --payload "$payload" \
+            --region ${{ secrets.AWS_REGION }} \
+            response.json
+            
+          cat response.json

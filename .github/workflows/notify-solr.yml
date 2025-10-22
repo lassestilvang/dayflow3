@@ -1,0 +1,36 @@
+name: Apache Solr Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published"]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  solr-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.SOLR_URL != '' }}
+    steps:
+      - name: Send data to Solr
+        run: |
+          payload=$(cat <<EOF
+          {
+            "event": "${{ github.event_name }}",
+            "action": "${{ github.event.action }}",
+            "repository": "${{ github.repository }}",
+            "sender": "${{ github.actor }}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "data": ${{ toJSON(github.event) }}
+          }
+          EOF
+          )
+          
+          curl -X POST \
+            "${{ secrets.SOLR_URL }}/update/json/docs" \
+            -H "Content-Type: application/json" \
+            -d "$payload"

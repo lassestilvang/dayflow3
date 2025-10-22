@@ -1,0 +1,63 @@
+name: Make.com Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  make-com-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.MAKE_COM_WEBHOOK_URL != '' }}
+    steps:
+      - name: Send Make.com webhook
+        run: |
+          payload=$(cat <<EOF
+          {
+            "event": {
+              "name": "${{ github.event_name }}",
+              "action": "${{ github.event.action }}",
+              "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            },
+            "repository": {
+              "name": "${{ github.repository }}",
+              "url": "${{ github.repositoryUrl }}"
+            },
+            "sender": {
+              "login": "${{ github.actor }}",
+              "type": "${{ github.event.sender.type }}"
+            },
+            "pull_request": {
+              "title": "${{ github.event.pull_request.title || '' }}",
+              "url": "${{ github.event.pull_request.html_url || '' }}",
+              "merged": ${{ github.event.pull_request.merged || false }}
+            },
+            "issue": {
+              "title": "${{ github.event.issue.title || '' }}",
+              "url": "${{ github.event.issue.html_url || '' }}",
+              "labels": "${{ join(github.event.issue.labels.*.name, ', ') || '' }}"
+            },
+            "release": {
+              "name": "${{ github.event.release.name || '' }}",
+              "url": "${{ github.event.release.html_url || '' }}",
+              "tag_name": "${{ github.event.release.tag_name || '' }}"
+            },
+            "workflow": {
+              "name": "${{ github.event.workflow_run.name || '' }}",
+              "status": "${{ github.event.workflow_run.conclusion || '' }}",
+              "branch": "${{ github.event.workflow_run.head_branch || '' }}"
+            }
+          }
+          EOF
+          )
+          
+          curl -X POST \
+            "${{ secrets.MAKE_COM_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d "$payload"

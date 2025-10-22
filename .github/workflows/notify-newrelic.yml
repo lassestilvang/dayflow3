@@ -1,0 +1,68 @@
+name: New Relic Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  newrelic-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.NEWRELIC_API_KEY != '' }}
+    steps:
+      - name: Send New Relic event on CI failure
+        if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'failure'
+        run: |
+          curl -X POST \
+            "https://insights-collector.newrelic.com/v1/accounts/${{ secrets.NEWRELIC_ACCOUNT_ID }}/events" \
+            -H "Content-Type: application/json" \
+            -H "X-Insert-Key: ${{ secrets.NEWRELIC_API_KEY }}" \
+            -d '{
+              "eventType": "GitHubCIWorkflowFailure",
+              "repository": "${{ github.repository }}",
+              "workflow": "${{ github.event.workflow_run.name }}",
+              "branch": "${{ github.event.workflow_run.head_branch }}",
+              "commit": "${{ github.event.workflow_run.head_commit.message }}",
+              "actor": "${{ github.event.workflow_run.head_commit.author.name }}",
+              "url": "${{ github.event.workflow_run.html_url }}",
+              "timestamp": $(date +%s)000
+            }'
+
+      - name: Send New Relic event on critical issues
+        if: github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'critical')
+        run: |
+          curl -X POST \
+            "https://insights-collector.newrelic.com/v1/accounts/${{ secrets.NEWRELIC_ACCOUNT_ID }}/events" \
+            -H "Content-Type: application/json" \
+            -H "X-Insert-Key: ${{ secrets.NEWRELIC_API_KEY }}" \
+            -d '{
+              "eventType": "GitHubCriticalIssue",
+              "repository": "${{ github.repository }}",
+              "issue": "${{ github.event.issue.title }}",
+              "author": "${{ github.event.issue.user.login }}",
+              "labels": "${{ join(github.event.issue.labels.*.name, ', ') }}",
+              "url": "${{ github.event.issue.html_url }}",
+              "timestamp": $(date +%s)000
+            }'
+
+      - name: Send New Relic deployment marker
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          curl -X POST \
+            "https://api.newrelic.com/v2/applications/${{ secrets.NEWRELIC_APP_ID }}/deployments.json" \
+            -H "Content-Type: application/json" \
+            -H "X-Api-Key: ${{ secrets.NEWRELIC_API_KEY }}" \
+            -d '{
+              "deployment": {
+                "revision": "${{ github.sha }}",
+                "changelog": "Deployed from GitHub Actions",
+                "description": "Deployed commit ${{ github.sha }} by ${{ github.actor }}",
+                "user": "${{ github.actor }}"
+              }
+            }'

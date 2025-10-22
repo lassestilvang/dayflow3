@@ -1,0 +1,43 @@
+name: Automate.io Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  automate-io-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.AUTOMATE_IO_WEBHOOK_URL != '' }}
+    steps:
+      - name: Send Automate.io webhook
+        run: |
+          payload=$(cat <<EOF
+          {
+            "event_name": "${{ github.event_name }}",
+            "action": "${{ github.event.action }}",
+            "repository": "${{ github.repository }}",
+            "sender": "${{ github.actor }}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "pr_title": "${{ github.event.pull_request.title || '' }}",
+            "pr_url": "${{ github.event.pull_request.html_url || '' }}",
+            "issue_title": "${{ github.event.issue.title || '' }}",
+            "issue_url": "${{ github.event.issue.html_url || '' }}",
+            "release_name": "${{ github.event.release.name || '' }}",
+            "release_url": "${{ github.event.release.html_url || '' }}",
+            "workflow_name": "${{ github.event.workflow_run.name || '' }}",
+            "workflow_status": "${{ github.event.workflow_run.conclusion || '' }}"
+          }
+          EOF
+          )
+          
+          curl -X POST \
+            "${{ secrets.AUTOMATE_IO_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d "$payload"

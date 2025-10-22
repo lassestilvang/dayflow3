@@ -1,0 +1,64 @@
+name: Honeybadger Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  honeybadger-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.HONEYBADGER_API_KEY != '' }}
+    steps:
+      - name: Send Honeybadger deploy notification
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          curl -X POST \
+            "https://api.honeybadger.io/v1/deploys" \
+            -H "Content-Type: application/json" \
+            -H "X-API-Key: ${{ secrets.HONEYBADGER_API_KEY }}" \
+            -d '{
+              "deploy": {
+                "environment": "production",
+                "revision": "${{ github.sha }}",
+                "repository": "${{ github.repository }}",
+                "local_username": "${{ github.actor }}"
+              }
+            }'
+
+      - name: Send Honeybadger error on CI failure
+        if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'failure'
+        run: |
+          curl -X POST \
+            "https://api.honeybadger.io/v1/notices" \
+            -H "Content-Type: application/json" \
+            -H "X-API-Key: ${{ secrets.HONEYBADGER_API_KEY }}" \
+            -d '{
+              "notice": {
+                "error": {
+                  "class": "CIWorkflowFailure",
+                  "message": "The CI workflow has failed and requires attention"
+                },
+                "request": {
+                  "url": "${{ github.event.workflow_run.html_url }}",
+                  "action": "CI Workflow"
+                },
+                "server": {
+                  "environment_name": "ci",
+                  "hostname": "github-actions"
+                },
+                "context": {
+                  "repository": "${{ github.repository }}",
+                  "workflow": "${{ github.event.workflow_run.name }}",
+                  "branch": "${{ github.event.workflow_run.head_branch }}",
+                  "commit": "${{ github.event.workflow_run.head_commit.message }}",
+                  "actor": "${{ github.event.workflow_run.head_commit.author.name }}"
+                }
+              }
+            }'

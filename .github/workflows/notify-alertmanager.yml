@@ -1,0 +1,74 @@
+name: Alertmanager Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  alertmanager-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.ALERTMANAGER_WEBHOOK_URL != '' }}
+    steps:
+      - name: Send Alertmanager alert on CI failure
+        if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'failure'
+        run: |
+          curl -X POST \
+            "${{ secrets.ALERTMANAGER_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "alerts": [
+                {
+                  "labels": {
+                    "alertname": "CIWorkflowFailure",
+                    "severity": "critical",
+                    "repository": "${{ github.repository }}",
+                    "workflow": "${{ github.event.workflow_run.name }}",
+                    "branch": "${{ github.event.workflow_run.head_branch }}",
+                    "actor": "${{ github.event.workflow_run.head_commit.author.name }}"
+                  },
+                  "annotations": {
+                    "summary": "CI Workflow Failed: ${{ github.event.workflow_run.name }}",
+                    "description": "The CI workflow has failed and requires attention.",
+                    "url": "${{ github.event.workflow_run.html_url }}",
+                    "commit": "${{ github.event.workflow_run.head_commit.message }}"
+                  },
+                  "startsAt": "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)",
+                  "generatorURL": "${{ github.event.workflow_run.html_url }}"
+                }
+              ]
+            }'
+
+      - name: Send Alertmanager alert on critical issues
+        if: github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'critical')
+        run: |
+          curl -X POST \
+            "${{ secrets.ALERTMANAGER_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "alerts": [
+                {
+                  "labels": {
+                    "alertname": "CriticalIssueOpened",
+                    "severity": "critical",
+                    "repository": "${{ github.repository }}",
+                    "issue": "${{ github.event.issue.title }}",
+                    "author": "${{ github.event.issue.user.login }}",
+                    "labels": "${{ join(github.event.issue.labels.*.name, ', ') }}"
+                  },
+                  "annotations": {
+                    "summary": "Critical Issue Opened: ${{ github.event.issue.title }}",
+                    "description": "A critical issue has been opened and requires immediate attention.",
+                    "url": "${{ github.event.issue.html_url }}"
+                  },
+                  "startsAt": "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)",
+                  "generatorURL": "${{ github.event.issue.html_url }}"
+                }
+              ]
+            }'

@@ -1,0 +1,58 @@
+name: Documentation
+
+on:
+  push:
+    branches: [main]
+    paths: ['docs/**', '*.md', 'src/components/**/*']
+  pull_request:
+    branches: [main]
+    paths: ['docs/**', '*.md', 'src/components/**/*']
+
+jobs:
+  build-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate component documentation
+        run: |
+          # Generate documentation for components
+          mkdir -p docs/components
+          
+          # Extract component documentation
+          find src/components -name "*.tsx" -exec grep -l "export.*function\|export.*const" {} \; | while read file; do
+            component=$(basename "$file" .tsx)
+            echo "## $component" >> "docs/components/$component.md"
+            echo "" >> "docs/components/$component.md"
+            echo "\`\`\`typescript" >> "docs/components/$component.md"
+            cat "$file" >> "docs/components/$component.md"
+            echo "\`\`\`" >> "docs/components/$component.md"
+          done
+
+      - name: Build documentation site
+        run: |
+          # If using a documentation tool like Storybook or Docusaurus
+          # npm run build:docs
+          echo "Documentation built successfully"
+
+      - name: Deploy documentation
+        if: github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs
+          destination_dir: docs

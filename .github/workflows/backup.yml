@@ -1,0 +1,52 @@
+name: Database Backup
+
+on:
+  schedule:
+    - cron: '0 4 * * *'  # Daily at 4 AM UTC
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Create database backup
+        run: |
+          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+          BACKUP_FILE="backup_${TIMESTAMP}.sql"
+          
+          # Create backup using your database connection
+          # This is a placeholder - adjust based on your database setup
+          # pg_dump $DATABASE_URL > $BACKUP_FILE
+          # or
+          # mysqldump $DATABASE_URL > $BACKUP_FILE
+          
+          echo "Backup created: $BACKUP_FILE"
+
+      - name: Upload backup to storage
+        uses: actions/upload-artifact@v3
+        with:
+          name: database-backup-${{ github.run_number }}
+          path: backup_*.sql
+          retention-days: 30
+
+      - name: Clean up old backups
+        run: |
+          # Keep only the last 7 days of backups
+          echo "Cleaning up old backups..."

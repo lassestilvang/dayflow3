@@ -1,0 +1,66 @@
+name: Auto Assign
+
+on:
+  pull_request:
+    types: [opened, ready_for_review]
+
+jobs:
+  add-assignees:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Auto-assign author
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.addAssignees({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              assignees: [context.payload.pull_request.user.login]
+            });
+
+      - name: Auto-request reviewers
+        uses: actions/github-script@v6
+        with:
+          script: |
+            // Request review from maintainers based on files changed
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+
+            const reviewers = new Set();
+            
+            // Add reviewers based on file patterns
+            files.forEach(file => {
+              if (file.filename.includes('auth/')) {
+                reviewers.add('lasse');
+              }
+              if (file.filename.includes('api/')) {
+                reviewers.add('lasse');
+              }
+              if (file.filename.includes('components/')) {
+                reviewers.add('lasse');
+              }
+              if (file.filename.includes('.github/')) {
+                reviewers.add('lasse');
+              }
+            });
+
+            // Default reviewer if no specific patterns match
+            if (reviewers.size === 0) {
+              reviewers.add('lasse');
+            }
+
+            if (reviewers.size > 0) {
+              await github.rest.pulls.requestReviewers({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.issue.number,
+                reviewers: Array.from(reviewers)
+              });
+            }

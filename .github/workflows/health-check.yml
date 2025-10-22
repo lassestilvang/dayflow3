@@ -1,0 +1,39 @@
+name: Health Check
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'  # Every 5 minutes
+  workflow_dispatch:
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check production health
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://dayflow-planner.vercel.app/api/health)
+          if [ $response -ne 200 ]; then
+            echo "Health check failed with status code: $response"
+            exit 1
+          fi
+          echo "Health check passed"
+
+      - name: Notify on failure
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Production Health Check Failed',
+              body: `
+              The production health check failed at ${new Date().toISOString()}.
+              
+              Please investigate the issue immediately.
+              
+              **Status Code**: ${{ steps.health-check.outputs.status }}
+              **Time**: ${new Date().toISOString()}
+              `,
+              labels: ['urgent', 'health-check']
+            });

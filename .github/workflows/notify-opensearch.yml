@@ -1,0 +1,36 @@
+name: OpenSearch Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published"]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  opensearch-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.OPENSEARCH_URL != '' }}
+    steps:
+      - name: Send data to OpenSearch
+        run: |
+          payload=$(cat <<EOF
+          {
+            "event": "${{ github.event_name }}",
+            "action": "${{ github.event.action }}",
+            "repository": "${{ github.repository }}",
+            "sender": "${{ github.actor }}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "data": ${{ toJSON(github.event) }}
+          }
+          EOF
+          )
+          
+          curl -X POST \
+            "${{ secrets.OPENSEARCH_URL }}/github-events/_doc" \
+            -H "Content-Type: application/json" \
+            -d "$payload"

@@ -1,0 +1,43 @@
+name: Custom Webhook Notifications
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published]
+
+jobs:
+  webhook-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.CUSTOM_WEBHOOK_URL != '' }}
+    strategy:
+      matrix:
+        event: [pull_request, issue, release]
+    steps:
+      - name: Send custom webhook notification
+        run: |
+          payload=$(cat <<EOF
+          {
+            "event": "${{ github.event_name }}",
+            "action": "${{ github.event.action }}",
+            "repository": {
+              "name": "${{ github.repository }}",
+              "url": "${{ github.repositoryUrl }}"
+            },
+            "sender": {
+              "login": "${{ github.actor }}",
+              "type": "${{ github.event.sender.type }}"
+            },
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "data": ${{ toJSON(github.event) }}
+          }
+          EOF
+          )
+          
+          curl -X POST \
+            "${{ secrets.CUSTOM_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.CUSTOM_WEBHOOK_TOKEN }}" \
+            -d "$payload"

@@ -1,0 +1,40 @@
+name: Google Pub/Sub Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published"]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  gcp-pubsub-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.GCP_SA_KEY != '' }}
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Publish message to Pub/Sub
+        run: |
+          payload=$(cat <<EOF
+          {
+            "event": "${{ github.event_name }}",
+            "action": "${{ github.event.action }}",
+            "repository": "${{ github.repository }}",
+            "sender": "${{ github.actor }}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "data": ${{ toJSON(github.event) }}
+          }
+          EOF
+          )
+          
+          echo "$payload" | gcloud pubsub topics publish ${{ secrets.GCP_PUBSUB_TOPIC }} \
+            --message "github-event-${{ github.event_name }}-${{ github.event.action }}" \
+            --region ${{ secrets.GCP_REGION }}

@@ -1,0 +1,31 @@
+name: Flowroute Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published"]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  flowroute-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.FLOWROUTE_ACCESS_KEY != '' && secrets.FLOWROUTE_SECRET_KEY != '' }}
+    steps:
+      - name: Send SMS via Flowroute
+        run: |
+          message="GitHub Event: ${{ github.event_name }} - ${{ github.event.action }}. Repository: ${{ github.repository }}. Sender: ${{ github.actor }}."
+          
+          curl -X POST \
+            "https://api.flowroute.com/v2/messages" \
+            -H "Authorization: Basic $(echo -n ${{ secrets.FLOWROUTE_ACCESS_KEY }}:${{ secrets.FLOWROUTE_SECRET_KEY }} | base64)" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "from": "${{ secrets.FLOWROUTE_FROM_NUMBER }}",
+              "to": ["${{ secrets.FLOWROUTE_TO_NUMBER }}",
+              "body": "'$message'"
+            }'

@@ -1,0 +1,60 @@
+name: RocketChat Notifications
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published]
+
+jobs:
+  rocketchat-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.ROCKETCHAT_WEBHOOK_URL != '' }}
+    steps:
+      - name: Send RocketChat notification
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const webhook = process.env.ROCKETCHAT_WEBHOOK_URL;
+            const payload = {
+              text: `### ${context.event_name} - ${context.event.action}`,
+              attachments: [{
+                color: context.event_name === 'pull_request' && context.event.action === 'opened' ? 'good' : 
+                       context.event_name === 'pull_request' && context.event.action === 'closed' && context.event.pull_request.merged ? 'good' : 'warning',
+                fields: [{
+                  title: 'Repository',
+                  value: context.repository.full_name,
+                  short: true
+                }, {
+                  title: 'Actor',
+                  value: context.actor.login,
+                  short: true
+                }, {
+                  title: context.event_name === 'pull_request' ? 'Pull Request' : 
+                         context.event_name === 'issues' ? 'Issue' : 'Release',
+                  value: context.event_name === 'pull_request' ? context.payload.pull_request.title :
+                         context.event_name === 'issues' ? context.payload.issue.title :
+                         context.payload.release.name,
+                  short: false
+                }],
+                actions: [{
+                  type: 'button',
+                  text: 'View Details',
+                  url: context.event_name === 'pull_request' ? context.payload.pull_request.html_url :
+                        context.event_name === 'issues' ? context.payload.issue.html_url :
+                        context.payload.release.html_url
+                }]
+              }]
+            };
+
+            await fetch(webhook, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(payload)
+            });
+        env:
+          ROCKETCHAT_WEBHOOK_URL: ${{ secrets.ROCKETCHAT_WEBHOOK_URL }}

@@ -1,0 +1,35 @@
+name: Leanplum Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published"]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  leanplum-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.LEANPLUM_API_KEY != '' }}
+    steps:
+      - name: Send data to Leanplum
+        run: |
+          payload=$(cat <<EOF
+          {
+            "event": "${{ github.event_name }}_${{ github.event.action }}",
+            "repository": "${{ github.repository }}",
+            "sender": "${{ github.actor }}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "data": ${{ toJSON(github.event) }}
+          }
+          EOF
+          )
+          
+          curl -X POST \
+            "https://api.leanplum.com/api?action=track" \
+            -H "Content-Type: application/json" \
+            -d "appId=${{ secrets.LEANPLUM_APP_ID }}&clientKey=${{ secrets.LEANPLUM_API_KEY }}&data=$payload"

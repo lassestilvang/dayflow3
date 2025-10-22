@@ -1,0 +1,100 @@
+name: Microsoft Teams Notifications
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review]
+  issues:
+    types: [opened, closed]
+  release:
+    types: [published]
+
+jobs:
+  notify-teams:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.TEAMS_WEBHOOK_URL != '' }}
+    steps:
+      - name: Notify Teams on PR events
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const webhook = process.env.TEAMS_WEBHOOK_URL;
+            const payload = {
+              "@type": "MessageCard",
+              "@context": "http://schema.org/extensions",
+              "themeColor": "${{ github.event.action == 'opened' && '00FF00' || github.event.action == 'closed' && github.event.pull_request.merged && '00FF00' || 'FF0000' }}",
+              "summary": "Pull Request ${{ github.event.action }}",
+              "sections": [{
+                "activityTitle": "Pull Request ${{ github.event.action }}",
+                "activitySubtitle": "${{ github.event.pull_request.title }}",
+                "facts": [{
+                  "name": "Author",
+                  "value": "${{ github.event.pull_request.user.login }}"
+                }, {
+                  "name": "Repository",
+                  "value": "${{ github.repository }}"
+                }],
+                "markdown": true,
+                "potentialAction": [{
+                  "@type": "OpenUri",
+                  "name": "View Pull Request",
+                  "targets": [{
+                    "os": "default",
+                    "uri": "${{ github.event.pull_request.html_url }}"
+                  }]
+                }]
+              }]
+            };
+
+            await fetch(webhook, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(payload)
+            });
+        env:
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+
+      - name: Notify Teams on issue events
+        if: github.event_name == 'issues'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const webhook = process.env.TEAMS_WEBHOOK_URL;
+            const payload = {
+              "@type": "MessageCard",
+              "@context": "http://schema.org/extensions",
+              "themeColor": "${{ github.event.action == 'opened' && '00FF00' || 'FF0000' }}",
+              "summary": "Issue ${{ github.event.action }}",
+              "sections": [{
+                "activityTitle": "Issue ${{ github.event.action }}",
+                "activitySubtitle": "${{ github.event.issue.title }}",
+                "facts": [{
+                  "name": "Author",
+                  "value": "${{ github.event.issue.user.login }}"
+                }, {
+                  "name": "Repository",
+                  "value": "${{ github.repository }}"
+                }],
+                "markdown": true,
+                "potentialAction": [{
+                  "@type": "OpenUri",
+                  "name": "View Issue",
+                  "targets": [{
+                    "os": "default",
+                    "uri": "${{ github.event.issue.html_url }}"
+                  }]
+                }]
+              }]
+            };
+
+            await fetch(webhook, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(payload)
+            });
+        env:
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}

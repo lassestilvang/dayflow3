@@ -1,0 +1,38 @@
+name: Dynamic Yield Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published"]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  dynamic-yield-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.DYNAMIC_YIELD_API_KEY != '' }}
+    steps:
+      - name: Send data to Dynamic Yield
+        run: |
+          payload=$(cat <<EOF
+          {
+            "event": "${{ github.event_name }}_${{ github.event.action }}",
+            "properties": {
+              "repository": "${{ github.repository }}",
+              "sender": "${{ github.actor }}",
+              "data": ${{ toJSON(github.event) }}
+            },
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+          )
+          
+          curl -X POST \
+            "https://api.dynamicyield.com/v1/events" \
+            -H "Authorization: Bearer ${{ secrets.DYNAMIC_YIELD_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d "$payload"

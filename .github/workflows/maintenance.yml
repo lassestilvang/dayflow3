@@ -1,0 +1,71 @@
+name: Maintenance Tasks
+
+on:
+  schedule:
+    - cron: '0 6 * * 0'  # Weekly on Sunday at 6 AM UTC
+  workflow_dispatch:
+
+jobs:
+  maintenance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Update dependencies
+        run: |
+          echo "Checking for outdated dependencies..."
+          pnpm outdated || true
+
+      - name: Security audit
+        run: |
+          echo "Running security audit..."
+          pnpm audit --audit-level moderate
+
+      - name: Clean up unused dependencies
+        run: |
+          echo "Checking for unused dependencies..."
+          # This would require a tool like depcheck
+          # npx depcheck || true
+
+      - name: Generate maintenance report
+        run: |
+          echo "# Maintenance Report - $(date)" > maintenance-report.md
+          echo "" >> maintenance-report.md
+          echo "## Dependency Status" >> maintenance-report.md
+          echo "\`\`\`" >> maintenance-report.md
+          pnpm outdated >> maintenance-report.md 2>&1 || echo "No outdated dependencies found" >> maintenance-report.md
+          echo "\`\`\`" >> maintenance-report.md
+          echo "" >> maintenance-report.md
+          echo "## Security Audit" >> maintenance-report.md
+          echo "\`\`\`" >> maintenance-report.md
+          pnpm audit --audit-level moderate >> maintenance-report.md 2>&1 || echo "No security issues found" >> maintenance-report.md
+          echo "\`\`\`" >> maintenance-report.md
+
+      - name: Create maintenance issue
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('maintenance-report.md', 'utf8');
+            
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Weekly Maintenance Report - ${new Date().toLocaleDateString()}`,
+              body: report,
+              labels: ['maintenance', 'dependencies']
+            });

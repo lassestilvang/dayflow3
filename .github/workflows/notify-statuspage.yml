@@ -1,0 +1,43 @@
+name: Status Page Updates
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  update-status:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.STATUSPAGE_API_KEY != '' }}
+    steps:
+      - name: Update status page
+        run: |
+          # Update status page with deployment information
+          curl -X POST \
+            "https://api.statuspage.io/v1/pages/${{ secrets.STATUSPAGE_PAGE_ID }}/components" \
+            -H "Authorization: OAuth ${{ secrets.STATUSPAGE_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "component": {
+                "status": "operational",
+                "description": "Latest deployment completed successfully"
+              }
+            }'
+
+      - name: Create incident if deployment fails
+        if: failure()
+        run: |
+          curl -X POST \
+            "https://api.statuspage.io/v1/pages/${{ secrets.STATUSPAGE_PAGE_ID }}/incidents" \
+            -H "Authorization: OAuth ${{ secrets.STATUSPAGE_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "incident": {
+                "name": "Deployment Failure",
+                "status": "investigating",
+                "body": "A deployment has failed and we are investigating the issue.",
+                "components": {
+                  "${{ secrets.STATUSPAGE_COMPONENT_ID }}": "degraded_performance"
+                }
+              }
+            }'

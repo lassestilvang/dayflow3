@@ -1,0 +1,32 @@
+name: Tyntec Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published"]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  tyntec-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.TYNTEC_API_KEY != '' }}
+    steps:
+      - name: Send SMS via Tyntec
+        run: |
+          message="GitHub Event: ${{ github.event_name }} - ${{ github.event.action }}. Repository: ${{ github.repository }}. Sender: ${{ github.actor }}."
+          
+          curl -X POST \
+            "https://api.tyntec.com/chat-api/v2/messages" \
+            -H "apikey: ${{ secrets.TYNTEC_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "from": "${{ secrets.TYNTEC_FROM_NUMBER }}",
+              "to": ["${{ secrets.TYNTEC_TO_NUMBER }}"],
+              "channel": "sms",
+              "content": "'$message'"
+            }'

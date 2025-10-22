@@ -1,0 +1,31 @@
+name: Sinch Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published"]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  sinch-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.SINCH_API_KEY != '' }}
+    steps:
+      - name: Send SMS via Sinch
+        run: |
+          message="GitHub Event: ${{ github.event_name }} - ${{ github.event.action }}. Repository: ${{ github.repository }}. Sender: ${{ github.actor }}."
+          
+          curl -X POST \
+            "https://us.sms.api.sinch.com/xms/v1/${{ secrets.SINCH_SERVICE_PLAN_ID }}/batches" \
+            -H "Authorization: Bearer ${{ secrets.SINCH_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "from": "${{ secrets.SINCH_FROM_NUMBER }}",
+              "to": ["${{ secrets.SINCH_TO_NUMBER }}"],
+              "body": "'$message'"
+            }'

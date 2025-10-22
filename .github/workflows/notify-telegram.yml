@@ -1,0 +1,33 @@
+name: Telegram Notifications
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published]
+
+jobs:
+  telegram-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != '' }}
+    steps:
+      - name: Send Telegram notification
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message: |
+            📢 *${{ github.event_name }}* - *${{ github.event.action }}*
+            
+            *Repository*: ${{ github.repository }}
+            *Actor*: ${{ github.actor }}
+            
+            ${{ github.event_name == 'pull_request' && format('PR: %s', github.event.pull_request.title) || '' }}
+            ${{ github.event_name == 'issues' && format('Issue: %s', github.event.issue.title) || '' }}
+            ${{ github.event_name == 'release' && format('Release: %s', github.event.release.name) || '' }}
+            
+            [View Details](${{ github.event_name == 'pull_request' && github.event.pull_request.html_url || github.event_name == 'issues' && github.event.issue.html_url || github.event.release.html_url }})
+          format: markdown
+          disable_web_page_preview: false

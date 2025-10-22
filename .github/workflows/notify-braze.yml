@@ -1,0 +1,40 @@
+name: Braze Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published"]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  braze-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.BRAZE_API_KEY != '' }}
+    steps:
+      - name: Send data to Braze
+        run: |
+          payload=$(cat <<EOF
+          {
+            "events": [{
+              "name": "${{ github.event_name }}_${{ github.event.action }}",
+              "time": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+              "properties": {
+                "repository": "${{ github.repository }}",
+                "sender": "${{ github.actor }}",
+                "data": ${{ toJSON(github.event) }}
+              }
+            }]
+          }
+          EOF
+          )
+          
+          curl -X POST \
+            "https://rest.iad-01.braze.com/users/track" \
+            -H "Authorization: Bearer ${{ secrets.BRAZE_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d "$payload"

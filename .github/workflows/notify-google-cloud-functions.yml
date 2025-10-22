@@ -1,0 +1,42 @@
+name: Google Cloud Functions Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published"]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  gcp-functions-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.GCP_SA_KEY != '' }}
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Invoke Google Cloud Function
+        run: |
+          payload=$(cat <<EOF
+          {
+            "event": "${{ github.event_name }}",
+            "action": "${{ github.event.action }}",
+            "repository": "${{ github.repository }}",
+            "sender": "${{ github.actor }}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "data": ${{ toJSON(github.event) }}
+          }
+          EOF
+          )
+          
+          curl -X POST \
+            "https://${{ secrets.GCP_REGION }}-${{ secrets.GCP_PROJECT_ID }}.cloudfunctions.net/${{ secrets.GCP_FUNCTION_NAME }}" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
+            -d "$payload"

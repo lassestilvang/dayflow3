@@ -1,0 +1,41 @@
+name: Azure Service Bus Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published"]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  azure-service-bus-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.AZURE_SERVICE_BUS_CONNECTION_STRING != '' }}
+    steps:
+      - name: Send message to Azure Service Bus
+        run: |
+          payload=$(cat <<EOF
+          {
+            "event": "${{ github.event_name }}",
+            "action": "${{ github.event.action }}",
+            "repository": "${{ github.repository }}",
+            "sender": "${{ github.actor }}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "data": ${{ toJSON(github.event) }}
+          }
+          EOF
+          )
+          
+          # Install Azure CLI
+          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+          
+          # Send message to Service Bus
+          az servicebus queue send \
+            --namespace-name ${{ secrets.AZURE_SERVICE_BUS_NAMESPACE }} \
+            --queue-name ${{ secrets.AZURE_SERVICE_BUS_QUEUE_NAME }} \
+            --connection-string "${{ secrets.AZURE_SERVICE_BUS_CONNECTION_STRING }}" \
+            --body "$payload"

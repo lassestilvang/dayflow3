@@ -1,0 +1,40 @@
+name: RingCentral Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published"]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  ringcentral-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.RINGCENTRAL_CLIENT_ID != '' && secrets.RINGCENTRAL_CLIENT_SECRET != '' }}
+    steps:
+      - name: Send SMS via RingCentral
+        run: |
+          message="GitHub Event: ${{ github.event_name }} - ${{ github.event.action }}. Repository: ${{ github.repository }}. Sender: ${{ github.actor }}."
+          
+          # Get access token
+          token_response=$(curl -X POST \
+            "https://platform.ringcentral.com/restapi/oauth/token" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "grant_type=client_credentials&client_id=${{ secrets.RINGCENTRAL_CLIENT_ID }}&client_secret=${{ secrets.RINGCENTRAL_CLIENT_SECRET }}")
+          
+          access_token=$(echo $token_response | jq -r '.access_token')
+          
+          # Send SMS
+          curl -X POST \
+            "https://platform.ringcentral.com/restapi/v1.0/account/~/extension/~/sms" \
+            -H "Authorization: Bearer $access_token" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "from": {"phoneNumber": "${{ secrets.RINGCENTRAL_FROM_NUMBER }}"},
+              "to": [{"phoneNumber": "${{ secrets.RINGCENTRAL_TO_NUMBER }}"}],
+              "text": "'$message'"
+            }'

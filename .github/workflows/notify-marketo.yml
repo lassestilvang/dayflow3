@@ -1,0 +1,47 @@
+name: Marketo Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published"]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  marketo-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.MARKETO_CLIENT_ID != '' && secrets.MARKETO_CLIENT_SECRET != '' }}
+    steps:
+      - name: Send data to Marketo
+        run: |
+          # Get access token
+          token_response=$(curl -X POST \
+            "${{ secrets.MARKETO_INSTANCE_URL }}/identity/oauth/token" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "grant_type=client_credentials&client_id=${{ secrets.MARKETO_CLIENT_ID }}&client_secret=${{ secrets.MARKETO_CLIENT_SECRET }}")
+          
+          access_token=$(echo $token_response | jq -r '.access_token')
+          
+          payload=$(cat <<EOF
+          {
+            "input": [{
+              "event": "${{ github.event_name }}",
+              "action": "${{ github.event.action }}",
+              "repository": "${{ github.repository }}",
+              "sender": "${{ github.actor }}",
+              "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            }]
+          }
+          EOF
+          )
+          
+          # Send to Marketo
+          curl -X POST \
+            "${{ secrets.MARKETO_INSTANCE_URL }}/rest/v1/leads.json" \
+            -H "Authorization: Bearer $access_token" \
+            -H "Content-Type: application/json" \
+            -d "$payload"

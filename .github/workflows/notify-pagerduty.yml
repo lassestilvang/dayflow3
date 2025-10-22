@@ -1,0 +1,70 @@
+name: PagerDuty Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  pagerduty-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.PAGERDUTY_INTEGRATION_KEY != '' }}
+    steps:
+      - name: Send PagerDuty notification on CI failure
+        if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'failure'
+        run: |
+          curl -X POST \
+            "https://events.pagerduty.com/v2/enqueue" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "routing_key": "${{ secrets.PAGERDUTY_INTEGRATION_KEY }}",
+              "event_action": "trigger",
+              "payload": {
+                "summary": "CI Workflow Failed: ${{ github.event.workflow_run.name }}",
+                "source": "${{ github.repository }}",
+                "severity": "critical",
+                "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+                "component": "CI/CD",
+                "group": "GitHub Actions",
+                "class": "workflow_failure",
+                "custom_details": {
+                  "workflow": "${{ github.event.workflow_run.name }}",
+                  "branch": "${{ github.event.workflow_run.head_branch }}",
+                  "commit": "${{ github.event.workflow_run.head_commit.message }}",
+                  "actor": "${{ github.event.workflow_run.head_commit.author.name }}",
+                  "url": "${{ github.event.workflow_run.html_url }}"
+                }
+              }
+            }'
+
+      - name: Send PagerDuty notification on critical issues
+        if: github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'critical')
+        run: |
+          curl -X POST \
+            "https://events.pagerduty.com/v2/enqueue" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "routing_key": "${{ secrets.PAGERDUTY_INTEGRATION_KEY }}",
+              "event_action": "trigger",
+              "payload": {
+                "summary": "Critical Issue Opened: ${{ github.event.issue.title }}",
+                "source": "${{ github.repository }}",
+                "severity": "critical",
+                "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+                "component": "Issues",
+                "group": "GitHub Issues",
+                "class": "critical_issue",
+                "custom_details": {
+                  "issue": "${{ github.event.issue.title }}",
+                  "author": "${{ github.event.issue.user.login }}",
+                  "labels": "${{ join(github.event.issue.labels.*.name, ', ') }}",
+                  "url": "${{ github.event.issue.html_url }}"
+                }
+              }
+            }'

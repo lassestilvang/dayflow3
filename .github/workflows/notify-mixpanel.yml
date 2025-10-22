@@ -1,0 +1,40 @@
+name: Mixpanel Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published"]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  mixpanel-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.MIXPANEL_API_KEY != '' }}
+    steps:
+      - name: Send data to Mixpanel
+        run: |
+          payload=$(cat <<EOF
+          {
+            "event": "${{ github.event_name }}_${{ github.event.action }}",
+            "properties": {
+              "repository": "${{ github.repository }}",
+              "sender": "${{ github.actor }}",
+              "timestamp": "$(date +%s)",
+              "data": ${{ toJSON(github.event) }}
+            }
+          }
+          EOF
+          )
+          
+          curl -X POST \
+            "https://api.mixpanel.com/track" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "api_key": "${{ secrets.MIXPANEL_API_KEY }}",
+              "event": "'$payload'"
+            }'

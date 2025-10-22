@@ -1,0 +1,37 @@
+name: WebSocket Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published"]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  websocket-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.WEBSOCKET_URL != '' }}
+    steps:
+      - name: Send message via WebSocket
+        run: |
+          payload=$(cat <<EOF
+          {
+            "event": "${{ github.event_name }}",
+            "action": "${{ github.event.action }}",
+            "repository": "${{ github.repository }}",
+            "sender": "${{ github.actor }}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "data": ${{ toJSON(github.event) }}
+          }
+          EOF
+          )
+          
+          # Install wscat
+          npm install -g wscat
+          
+          # Send message via WebSocket
+          echo "$payload" | wscat -c "${{ secrets.WEBSOCKET_URL }}" -x "$(cat)"

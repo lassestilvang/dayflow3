@@ -1,0 +1,44 @@
+name: MQTT Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published"]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  mqtt-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.MQTT_BROKER_URL != '' }}
+    steps:
+      - name: Send message to MQTT broker
+        run: |
+          payload=$(cat <<EOF
+          {
+            "event": "${{ github.event_name }}",
+            "action": "${{ github.event.action }}",
+            "repository": "${{ github.repository }}",
+            "sender": "${{ github.actor }}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "data": ${{ toJSON(github.event) }}
+          }
+          EOF
+          )
+          
+          # Install mosquitto clients
+          sudo apt-get update
+          sudo apt-get install -y mosquitto-clients
+          
+          # Send message to MQTT topic
+          echo "$payload" | mosquitto_pub \
+            -h "${{ secrets.MQTT_BROKER_HOST }}" \
+            -p "${{ secrets.MQTT_BROKER_PORT }}" \
+            -u "${{ secrets.MQTT_USERNAME }}" \
+            -P "${{ secrets.MQTT_PASSWORD }}" \
+            -t "${{ secrets.MQTT_TOPIC }}" \
+            -m "$(cat)"

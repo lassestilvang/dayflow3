@@ -1,0 +1,28 @@
+name: Twilio Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published"]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  twilio-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.TWILIO_ACCOUNT_SID != '' && secrets.TWILIO_AUTH_TOKEN != '' }}
+    steps:
+      - name: Send SMS via Twilio
+        run: |
+          message="GitHub Event: ${{ github.event_name }} - ${{ github.event.action }}. Repository: ${{ github.repository }}. Sender: ${{ github.actor }}."
+          
+          curl -X POST \
+            "https://api.twilio.com/2010-04-01/Accounts/${{ secrets.TWILIO_ACCOUNT_SID }}/Messages.json" \
+            --data-urlencode "To=${{ secrets.TWILIO_TO_NUMBER }}" \
+            --data-urlencode "From=${{ secrets.TWILIO_FROM_NUMBER }}" \
+            --data-urlencode "Body=$message" \
+            -u "${{ secrets.TWILIO_ACCOUNT_SID }}:${{ secrets.TWILIO_AUTH_TOKEN }}"

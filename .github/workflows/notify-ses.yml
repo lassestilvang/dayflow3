@@ -1,0 +1,46 @@
+name: Amazon SES Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published"]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  ses-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.AWS_ACCESS_KEY_ID != '' && secrets.AWS_SECRET_ACCESS_KEY != '' }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Send email via SES
+        run: |
+          subject="GitHub Event: ${{ github.event_name }} - ${{ github.event.action }}"
+          body="Event: ${{ github.event_name }}
+          Action: ${{ github.event.action }}
+          Repository: ${{ github.repository }}
+          Sender: ${{ github.actor }}
+          Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+          
+          ${{ github.event_name == 'pull_request' && format('PR: %s', github.event.pull_request.title) || '' }}
+          ${{ github.event_name == 'issues' && format('Issue: %s', github.event.issue.title) || '' }}
+          ${{ github.event_name == 'release' && format('Release: %s', github.event.release.name) || '' }}
+          
+          ${{ github.event_name == 'pull_request' && github.event.pull_request.html_url || github.event_name == 'issues' && github.event.issue.html_url || github.event.release.html_url }}"
+          
+          aws ses send-email \
+            --from "${{ secrets.SES_FROM_EMAIL }}" \
+            --to "${{ secrets.SES_TO_EMAIL }}" \
+            --subject "$subject" \
+            --text "$body" \
+            --region ${{ secrets.AWS_REGION }}

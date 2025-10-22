@@ -1,0 +1,37 @@
+name: Algolia Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published"]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  algolia-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.ALGOLIA_API_KEY != '' }}
+    steps:
+      - name: Send data to Algolia
+        run: |
+          payload=$(cat <<EOF
+          {
+            "event": "${{ github.event_name }}_${{ github.event.action }}",
+            "repository": "${{ github.repository }}",
+            "sender": "${{ github.actor }}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "data": ${{ toJSON(github.event) }}
+          }
+          EOF
+          )
+          
+          curl -X POST \
+            "https://api.algolia.com/v1/events" \
+            -H "X-Algolia-API-Key: ${{ secrets.ALGOLIA_API_KEY }}" \
+            -H "X-Algolia-Application-Id: ${{ secrets.ALGOLIA_APP_ID }}" \
+            -H "Content-Type: application/json" \
+            -d "$payload"

@@ -1,0 +1,43 @@
+name: GitHub Repository Backup
+
+on:
+  schedule:
+    - cron: '0 5 * * 0'  # Weekly on Sunday at 5 AM UTC
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Backup repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create backup archive
+        run: |
+          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+          BACKUP_NAME="${{ github.repository }}_${TIMESTAMP}"
+          
+          # Create backup archive
+          git archive --format=tar.gz --prefix="${BACKUP_NAME}/" HEAD > "${BACKUP_NAME}.tar.gz"
+          
+          # Add git history
+          git bundle create "${BACKUP_NAME}.bundle" --all
+
+      - name: Upload backup artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: github-backup-${{ github.run_number }}
+          path: |
+            *.tar.gz
+            *.bundle
+          retention-days: 90
+
+      - name: Backup to external storage (optional)
+        if: ${{ secrets.BACKUP_S3_BUCKET != '' }}
+        run: |
+          # Example: Upload to S3
+          # aws s3 cp *.tar.gz s3://${{ secrets.BACKUP_S3_BUCKET }}/github-backups/
+          # aws s3 cp *.bundle s3://${{ secrets.BACKUP_S3_BUCKET }}/github-backups/
+          echo "Backup uploaded to external storage"

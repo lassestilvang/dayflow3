@@ -1,0 +1,41 @@
+name: Kafka Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published"]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  kafka-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.KAFKA_BOOTSTRAP_SERVERS != '' }}
+    steps:
+      - name: Send message to Kafka
+        run: |
+          payload=$(cat <<EOF
+          {
+            "event": "${{ github.event_name }}",
+            "action": "${{ github.event.action }}",
+            "repository": "${{ github.repository }}",
+            "sender": "${{ github.actor }}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "data": ${{ toJSON(github.event) }}
+          }
+          EOF
+          )
+          
+          # Install kafkacat
+          sudo apt-get update
+          sudo apt-get install -y kafkacat
+          
+          # Send message to Kafka topic
+          echo "$payload" | kafkacat -P \
+            -b "${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}" \
+            -t "${{ secrets.KAFKA_TOPIC }}" \
+            -k "github-event-${{ github.event_name }}-${{ github.event.action }}"

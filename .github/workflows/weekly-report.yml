@@ -1,0 +1,83 @@
+name: Weekly Report
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'  # Every Monday at 9:00 UTC
+  workflow_dispatch:
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate weekly report
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { data: pulls } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed',
+              sort: 'updated',
+              direction: 'desc',
+              per_page: 100
+            });
+
+            const { data: issues } = await github.rest.issues.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed',
+              sort: 'updated',
+              direction: 'desc',
+              per_page: 100
+            });
+
+            const oneWeekAgo = new Date();
+            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+            const recentPulls = pulls.filter(pr => 
+              new Date(pr.merged_at) > oneWeekAgo
+            );
+
+            const recentIssues = issues.filter(issue => 
+              !issue.pull_request && new Date(issue.closed_at) > oneWeekAgo
+            );
+
+            const report = `
+            # Weekly Report - ${new Date().toLocaleDateString()}
+            
+            ## 📊 Summary
+            - **Merged Pull Requests**: ${recentPulls.length}
+            - **Closed Issues**: ${recentIssues.length}
+            
+            ## 🔀 Merged Pull Requests
+            ${recentPulls.map(pr => 
+              `- ${pr.title} by @${pr.user.login} (#${pr.number})`
+            ).join('\n') || 'No pull requests merged this week.'}
+            
+            ## ✅ Closed Issues
+            ${recentIssues.map(issue => 
+              `- ${issue.title} by @${issue.user.login} (#${issue.number})`
+            ).join('\n') || 'No issues closed this week.'}
+            
+            ---
+            *Generated on ${new Date().toISOString()}*
+            `;
+
+            console.log(report);
+            
+            // Create an issue with the report
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Weekly Report - ${new Date().toLocaleDateString()}`,
+              body: report,
+              labels: ['weekly-report']
+            });

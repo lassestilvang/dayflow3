@@ -1,0 +1,52 @@
+name: Notify Slack
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review]
+  issues:
+    types: [opened, closed]
+  release:
+    types: [published]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.SLACK_WEBHOOK_URL != '' }}
+    steps:
+      - name: Notify Slack on PR events
+        if: github.event_name == 'pull_request'
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#development'
+          text: |
+            Pull Request ${{ github.event.action }}: ${{ github.event.pull_request.title }}
+            By: ${{ github.event.pull_request.user.login }}
+            ${{ github.event.pull_request.html_url }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Notify Slack on issue events
+        if: github.event_name == 'issues'
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#development'
+          text: |
+            Issue ${{ github.event.action }}: ${{ github.event.issue.title }}
+            By: ${{ github.event.issue.user.login }}
+            ${{ github.event.issue.html_url }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Notify Slack on release
+        if: github.event_name == 'release'
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#releases'
+          text: |
+            🚀 New Release: ${{ github.event.release.name }}
+            ${{ github.event.release.html_url }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

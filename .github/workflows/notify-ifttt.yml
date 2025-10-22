@@ -1,0 +1,32 @@
+name: IFTTT Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  ifttt-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.IFTTT_WEBHOOK_URL != '' }}
+    steps:
+      - name: Send IFTTT webhook
+        run: |
+          # Extract event type for IFTTT
+          event_type="${{ github.event_name }}_${{ github.event.action }}"
+          
+          # Prepare values
+          value1="${{ github.repository }}"
+          value2="${{ github.actor }}"
+          value3="${{ github.event.pull_request.title || github.event.issue.title || github.event.release.name || github.event.workflow_run.name || '' }}"
+          
+          curl -X POST \
+            "${{ secrets.IFTTT_WEBHOOK_URL }}/${event_type}/with/key/${{ secrets.IFTTT_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"value1\":\"$value1\",\"value2\":\"$value2\",\"value3\":\"$value3\"}"

@@ -1,0 +1,60 @@
+name: Accessibility Testing
+
+on:
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 3 * * *'  # Daily at 3 AM UTC
+  workflow_dispatch:
+
+jobs:
+  accessibility:
+    name: Accessibility Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build application
+        run: pnpm build
+
+      - name: Start application
+        run: pnpm start &
+        env:
+          PORT: 3000
+
+      - name: Wait for application to start
+        run: sleep 10
+
+      - name: Install axe-core
+        run: npm install -g @axe-core/cli
+
+      - name: Run accessibility tests
+        run: |
+          axe http://localhost:3000 --tags wcag2a,wcag2aa --exit
+
+      - name: Run accessibility tests on key pages
+        run: |
+          axe http://localhost:3000/dashboard --tags wcag2a,wcag2aa --exit
+          axe http://localhost:3000/auth/signin --tags wcag2a,wcag2aa --exit
+
+      - name: Upload accessibility report
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: accessibility-report
+          path: axe-report.html
+          retention-days: 30

@@ -1,0 +1,68 @@
+name: Bugsnag Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  bugsnag-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.BUGSNAG_API_KEY != '' }}
+    steps:
+      - name: Send Bugsnag deploy notification
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          curl -X POST \
+            "https://build.bugsnag.com/" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "apiKey": "${{ secrets.BUGSNAG_API_KEY }}",
+              "appVersion": "${{ github.sha }}",
+              "releaseStage": "production",
+              "sourceControl": {
+                "provider": "github",
+                "repository": "${{ github.repository }}",
+                "revision": "${{ github.sha }}"
+              },
+              "builder": {
+                "name": "GitHub Actions",
+                "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              }
+            }'
+
+      - name: Send Bugsnag error on CI failure
+        if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'failure'
+        run: |
+          curl -X POST \
+            "https://notify.bugsnag.com/" \
+            -H "Content-Type: application/json" \
+            -H "Bugsnag-Api-Key: ${{ secrets.BUGSNAG_API_KEY }}" \
+            -d '{
+              "apiKey": "${{ secrets.BUGSNAG_API_KEY }}",
+              "releaseStage": "ci",
+              "appVersion": "${{ github.sha }}",
+              "context": "CI Workflow",
+              "severity": "error",
+              "exceptions": [{
+                "errorClass": "CIWorkflowFailure",
+                "message": "The CI workflow has failed and requires attention",
+                "stacktrace": []
+              }],
+              "metaData": {
+                "github": {
+                  "repository": "${{ github.repository }}",
+                  "workflow": "${{ github.event.workflow_run.name }}",
+                  "branch": "${{ github.event.workflow_run.head_branch }}",
+                  "commit": "${{ github.event.workflow_run.head_commit.message }}",
+                  "actor": "${{ github.event.workflow_run.head_commit.author.name }}",
+                  "url": "${{ github.event.workflow_run.html_url }}"
+                }
+              }
+            }'

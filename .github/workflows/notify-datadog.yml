@@ -1,0 +1,82 @@
+name: Datadog Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  datadog-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.DATADOG_API_KEY != '' }}
+    steps:
+      - name: Send Datadog event on CI failure
+        if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'failure'
+        run: |
+          curl -X POST \
+            "https://api.datadoghq.com/api/v1/events" \
+            -H "Content-Type: application/json" \
+            -H "DD-API-KEY: ${{ secrets.DATADOG_API_KEY }}" \
+            -d '{
+              "title": "CI Workflow Failed: ${{ github.event.workflow_run.name }}",
+              "text": "The CI workflow has failed and requires attention.\n\nRepository: ${{ github.repository }}\nWorkflow: ${{ github.event.workflow_run.name }}\nBranch: ${{ github.event.workflow_run.head_branch }}\nCommit: ${{ github.event.workflow_run.head_commit.message }}\nActor: ${{ github.event.workflow_run.head_commit.author.name }}",
+              "priority": "normal",
+              "alert_type": "error",
+              "tags": [
+                "repository:${{ github.repository }}",
+                "workflow:${{ github.event.workflow_run.name }}",
+                "branch:${{ github.event.workflow_run.head_branch }}",
+                "actor:${{ github.event.workflow_run.head_commit.author.login }}",
+                "ci:failure"
+              ],
+              "source_type_name": "github"
+            }'
+
+      - name: Send Datadog event on critical issues
+        if: github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'critical')
+        run: |
+          curl -X POST \
+            "https://api.datadoghq.com/api/v1/events" \
+            -H "Content-Type: application/json" \
+            -H "DD-API-KEY: ${{ secrets.DATADOG_API_KEY }}" \
+            -d '{
+              "title": "Critical Issue Opened: ${{ github.event.issue.title }}",
+              "text": "A critical issue has been opened and requires immediate attention.\n\nRepository: ${{ github.repository }}\nIssue: ${{ github.event.issue.title }}\nAuthor: ${{ github.event.issue.user.login }}\nLabels: ${{ join(github.event.issue.labels.*.name, ', ') }}",
+              "priority": "high",
+              "alert_type": "error",
+              "tags": [
+                "repository:${{ github.repository }}",
+                "issue:${{ github.event.issue.title }}",
+                "author:${{ github.event.issue.user.login }}",
+                "labels:${{ join(github.event.issue.labels.*.name, ',') }}",
+                "issue:critical"
+              ],
+              "source_type_name": "github"
+            }'
+
+      - name: Send Datadog metric on PR merge
+        if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged
+        run: |
+          curl -X POST \
+            "https://api.datadoghq.com/api/v1/series" \
+            -H "Content-Type: application/json" \
+            -H "DD-API-KEY: ${{ secrets.DATADOG_API_KEY }}" \
+            -d '{
+              "series": [
+                {
+                  "metric": "github.prs.merged",
+                  "points": [[$(date +%s), 1]],
+                  "tags": [
+                    "repository:${{ github.repository }}",
+                    "author:${{ github.event.pull_request.user.login }}",
+                    "base_branch:${{ github.event.pull_request.base.ref }}"
+                  ]
+                }
+              ]
+            }'

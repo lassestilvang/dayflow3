@@ -1,0 +1,46 @@
+name: Salesforce Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published"]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  salesforce-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.SALESFORCE_CONSUMER_KEY != '' && secrets.SALESFORCE_CONSUMER_SECRET != '' }}
+    steps:
+      - name: Send data to Salesforce
+        run: |
+          # Get access token
+          token_response=$(curl -X POST \
+            "https://login.salesforce.com/services/oauth2/token" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "grant_type=client_credentials&client_id=${{ secrets.SALESFORCE_CONSUMER_KEY }}&client_secret=${{ secrets.SALESFORCE_CONSUMER_SECRET }}")
+          
+          access_token=$(echo $token_response | jq -r '.access_token')
+          
+          payload=$(cat <<EOF
+          {
+            "event": "${{ github.event_name }}",
+            "action": "${{ github.event.action }}",
+            "repository": "${{ github.repository }}",
+            "sender": "${{ github.actor }}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "data": ${{ toJSON(github.event) }}
+          }
+          EOF
+          )
+          
+          # Send to Salesforce
+          curl -X POST \
+            "${{ secrets.SALESFORCE_INSTANCE_URL }}/services/data/v52.0/sobjects/GitHub_Event__c/" \
+            -H "Authorization: Bearer $access_token" \
+            -H "Content-Type: application/json" \
+            -d "$payload"

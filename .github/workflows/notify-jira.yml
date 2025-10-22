@@ -1,0 +1,79 @@
+name: Jira Integration
+
+on:
+  issues:
+    types: [opened, closed, labeled]
+  pull_request:
+    types: [opened, closed, ready_for_review]
+
+jobs:
+  jira-sync:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.JIRA_TOKEN != '' }}
+    steps:
+      - name: Create Jira ticket from GitHub issue
+        if: github.event_name == 'issues' && github.event.action == 'opened'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const jiraUrl = '${{ secrets.JIRA_URL }}';
+            const jiraToken = '${{ secrets.JIRA_TOKEN }}';
+            const projectKey = '${{ secrets.JIRA_PROJECT_KEY }}';
+            
+            const issueData = {
+              fields: {
+                project: { key: projectKey },
+                summary: context.payload.issue.title,
+                description: `${context.payload.issue.body}\n\n---\n\n**GitHub Issue**: ${context.payload.issue.html_url}`,
+                issuetype: { name: 'Task' },
+                labels: ['github-sync']
+              }
+            };
+            
+            const response = await fetch(`${jiraUrl}/rest/api/2/issue`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Basic ${Buffer.from(jiraToken).toString('base64')}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(issueData)
+            });
+            
+            if (response.ok) {
+              const result = await response.json();
+              const jiraKey = result.key;
+              const jiraUrl = `${jiraUrl}/browse/${jiraKey}`;
+              
+              // Add comment to GitHub issue with Jira link
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `🔗 Created Jira ticket: [${jiraKey}](${jiraUrl})`
+              });
+            }
+
+      - name: Update Jira ticket status
+        if: github.event_name == 'issues' && github.event.action == 'closed'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            // Find Jira ticket from GitHub issue comments
+            const comments = await github.rest.issues.listComments({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+            
+            const jiraComment = comments.data.find(comment => 
+              comment.body.includes('jira') && comment.body.includes('Created Jira ticket')
+            );
+            
+            if (jiraComment) {
+              // Extract Jira ticket key and update status
+              const jiraUrl = '${{ secrets.JIRA_URL }}';
+              const jiraToken = '${{ secrets.JIRA_TOKEN }}';
+              
+              // This would require parsing the comment and making another API call
+              console.log('Would update Jira ticket status');
+            }

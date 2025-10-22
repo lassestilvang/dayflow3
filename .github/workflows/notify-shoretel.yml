@@ -1,0 +1,37 @@
+name: ShoreTel Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published"]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  shoretel-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.SHORETEL_API_KEY != '' }}
+    steps:
+      - name: Send data to ShoreTel
+        run: |
+          payload=$(cat <<EOF
+          {
+            "event": "${{ github.event_name }}",
+            "action": "${{ github.event.action }}",
+            "repository": "${{ github.repository }}",
+            "sender": "${{ github.actor }}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "data": ${{ toJSON(github.event) }}
+          }
+          EOF
+          )
+          
+          curl -X POST \
+            "https://api.shoretel.com/v1/webhooks" \
+            -H "Authorization: Bearer ${{ secrets.SHORETEL_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d "$payload"

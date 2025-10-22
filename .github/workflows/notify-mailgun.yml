@@ -1,0 +1,41 @@
+name: Mailgun Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published"]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  mailgun-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.MAILGUN_API_KEY != '' }}
+    steps:
+      - name: Send email via Mailgun
+        run: |
+          subject="GitHub Event: ${{ github.event_name }} - ${{ github.event.action }}"
+          body="Event: ${{ github.event_name }}
+          Action: ${{ github.event.action }}
+          Repository: ${{ github.repository }}
+          Sender: ${{ github.actor }}
+          Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+          
+          ${{ github.event_name == 'pull_request' && format('PR: %s', github.event.pull_request.title) || '' }}
+          ${{ github.event_name == 'issues' && format('Issue: %s', github.event.issue.title) || '' }}
+          ${{ github.event_name == 'release' && format('Release: %s', github.event.release.name) || '' }}
+          
+          ${{ github.event_name == 'pull_request' && github.event.pull_request.html_url || github.event_name == 'issues' && github.event.issue.html_url || github.event.release.html_url }}"
+          
+          curl -X POST \
+            "https://api.mailgun.net/v3/${{ secrets.MAILGUN_DOMAIN }}/messages" \
+            -H "Authorization: Basic $(echo -n api:${{ secrets.MAILGUN_API_KEY }} | base64)" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "from=${{ secrets.MAILGUN_FROM_EMAIL }}" \
+            -d "to=${{ secrets.MAILGUN_TO_EMAIL }}" \
+            -d "subject=$subject" \
+            -d "text=$body"

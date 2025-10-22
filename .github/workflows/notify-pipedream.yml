@@ -1,0 +1,36 @@
+name: Pipedream Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  pipedream-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.PIPEDREAM_WEBHOOK_URL != '' }}
+    steps:
+      - name: Send Pipedream webhook
+        run: |
+          payload=$(cat <<EOF
+          {
+            "event": "${{ github.event_name }}",
+            "action": "${{ github.event.action }}",
+            "repository": "${{ github.repository }}",
+            "sender": "${{ github.actor }}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "data": ${{ toJSON(github.event) }}
+          }
+          EOF
+          )
+          
+          curl -X POST \
+            "${{ secrets.PIPEDREAM_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d "$payload"

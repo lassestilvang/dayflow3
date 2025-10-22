@@ -1,0 +1,41 @@
+name: Redis Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published"]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  redis-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.REDIS_URL != '' }}
+    steps:
+      - name: Send message to Redis
+        run: |
+          payload=$(cat <<EOF
+          {
+            "event": "${{ github.event_name }}",
+            "action": "${{ github.event.action }}",
+            "repository": "${{ github.repository }}",
+            "sender": "${{ github.actor }}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "data": ${{ toJSON(github.event) }}
+          }
+          EOF
+          )
+          
+          # Install redis-cli
+          sudo apt-get update
+          sudo apt-get install -y redis-tools
+          
+          # Send message to Redis list
+          echo "$payload" | redis-cli -u "${{ secrets.REDIS_URL }}" LPUSH "${{ secrets.REDIS_LIST_NAME }}"
+          
+          # Optionally publish to Redis channel
+          echo "$payload" | redis-cli -u "${{ secrets.REDIS_URL }}" PUBLISH "${{ secrets.REDIS_CHANNEL_NAME }}"

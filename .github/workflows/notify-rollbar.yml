@@ -1,0 +1,67 @@
+name: Rollbar Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  rollbar-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.ROLLBAR_ACCESS_TOKEN != '' }}
+    steps:
+      - name: Send Rollbar deploy notification
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          curl -X POST \
+            "https://api.rollbar.com/api/1/deploy/" \
+            -H "Content-Type: application/json" \
+            -H "X-Rollbar-Access-Token: ${{ secrets.ROLLBAR_ACCESS_TOKEN }}" \
+            -d '{
+              "environment": "production",
+              "revision": "${{ github.sha }}",
+              "rollbar_username": "${{ github.actor }}",
+              "local_username": "${{ github.actor }}",
+              "comment": "Deployed from GitHub Actions",
+              "status": "succeeded"
+            }'
+
+      - name: Send Rollbar notification on CI failure
+        if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'failure'
+        run: |
+          curl -X POST \
+            "https://api.rollbar.com/api/1/item/" \
+            -H "Content-Type: application/json" \
+            -H "X-Rollbar-Access-Token: ${{ secrets.ROLLBAR_ACCESS_TOKEN }}" \
+            -d '{
+              "access_token": "${{ secrets.ROLLBAR_ACCESS_TOKEN }}",
+              "data": {
+                "environment": "ci",
+                "level": "error",
+                "title": "CI Workflow Failed: ${{ github.event.workflow_run.name }}",
+                "body": {
+                  "trace": {
+                    "frames": [],
+                    "exception": {
+                      "class": "CIWorkflowFailure",
+                      "message": "The CI workflow has failed and requires attention"
+                    }
+                  }
+                },
+                "custom": {
+                  "repository": "${{ github.repository }}",
+                  "workflow": "${{ github.event.workflow_run.name }}",
+                  "branch": "${{ github.event.workflow_run.head_branch }}",
+                  "commit": "${{ github.event.workflow_run.head_commit.message }}",
+                  "actor": "${{ github.event.workflow_run.head_commit.author.name }}",
+                  "url": "${{ github.event.workflow_run.html_url }}"
+                },
+                "timestamp": $(date +%s)
+              }
+            }'

@@ -1,0 +1,74 @@
+name: Sentry Custom Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  sentry-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.SENTRY_AUTH_TOKEN != '' }}
+    steps:
+      - name: Send Sentry issue on CI failure
+        if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'failure'
+        run: |
+          curl -X POST \
+            "https://sentry.io/api/0/projects/${{ secrets.SENTRY_ORG }}/${{ secrets.SENTRY_PROJECT }}/issues/" \
+            -H "Authorization: Bearer ${{ secrets.SENTRY_AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "title": "CI Workflow Failed: ${{ github.event.workflow_run.name }}",
+              "level": "error",
+              "message": "The CI workflow has failed and requires attention.",
+              "culprit": "${{ github.event.workflow_run.name }}",
+              "platform": "other",
+              "extra": {
+                "repository": "${{ github.repository }}",
+                "workflow": "${{ github.event.workflow_run.name }}",
+                "branch": "${{ github.event.workflow_run.head_branch }}",
+                "commit": "${{ github.event.workflow_run.head_commit.message }}",
+                "actor": "${{ github.event.workflow_run.head_commit.author.name }}",
+                "url": "${{ github.event.workflow_run.html_url }}"
+              },
+              "tags": {
+                "repository": "${{ github.repository }}",
+                "workflow": "${{ github.event.workflow_run.name }}",
+                "branch": "${{ github.event.workflow_run.head_branch }}",
+                "actor": "${{ github.event.workflow_run.head_commit.author.login }}"
+              }
+            }'
+
+      - name: Send Sentry issue on critical issues
+        if: github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'critical')
+        run: |
+          curl -X POST \
+            "https://sentry.io/api/0/projects/${{ secrets.SENTRY_ORG }}/${{ secrets.SENTRY_PROJECT }}/issues/" \
+            -H "Authorization: Bearer ${{ secrets.SENTRY_AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "title": "Critical Issue Opened: ${{ github.event.issue.title }}",
+              "level": "fatal",
+              "message": "A critical issue has been opened and requires immediate attention.",
+              "culprit": "GitHub Issues",
+              "platform": "other",
+              "extra": {
+                "repository": "${{ github.repository }}",
+                "issue": "${{ github.event.issue.title }}",
+                "author": "${{ github.event.issue.user.login }}",
+                "labels": "${{ join(github.event.issue.labels.*.name, ', ') }}",
+                "url": "${{ github.event.issue.html_url }}"
+              },
+              "tags": {
+                "repository": "${{ github.repository }}",
+                "issue": "${{ github.event.issue.title }}",
+                "author": "${{ github.event.issue.user.login }}",
+                "labels": "${{ join(github.event.issue.labels.*.name, ',') }}"
+              }
+            }'

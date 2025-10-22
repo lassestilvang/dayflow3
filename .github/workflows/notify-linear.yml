@@ -1,0 +1,82 @@
+name: Linear Integration
+
+on:
+  issues:
+    types: [opened, closed, labeled]
+  pull_request:
+    types: [opened, closed, ready_for_review]
+
+jobs:
+  linear-sync:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.LINEAR_API_KEY != '' }}
+    steps:
+      - name: Sync issue to Linear
+        if: github.event_name == 'issues' && github.event.action == 'opened'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const response = await fetch('https://api.linear.app/graphql', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': '${{ secrets.LINEAR_API_KEY }}'
+              },
+              body: JSON.stringify({
+                query: `
+                  mutation IssueCreate($title: String!, $description: String!) {
+                    issueCreate(input: {
+                      title: $title,
+                      description: $description,
+                      teamId: "${{ secrets.LINEAR_TEAM_ID }}"
+                    }) {
+                      success
+                      issue {
+                        id
+                        identifier
+                        url
+                      }
+                    }
+                  }
+                `,
+                variables: {
+                  title: context.payload.issue.title,
+                  description: `${context.payload.issue.body}\n\n---\n\n**GitHub Issue**: ${context.payload.issue.html_url}`
+                }
+              })
+            });
+            
+            const result = await response.json();
+            if (result.data.issueCreate.success) {
+              const issue = result.data.issueCreate.issue;
+              
+              // Add comment to GitHub issue with Linear link
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `🔗 Created Linear issue: [${issue.identifier}](${issue.url})`
+              });
+            }
+
+      - name: Update Linear issue status
+        if: github.event_name == 'issues' && github.event.action == 'closed'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            // Find Linear issue from GitHub issue comments
+            const comments = await github.rest.issues.listComments({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+            
+            const linearComment = comments.data.find(comment => 
+              comment.body.includes('linear.app') && comment.body.includes('Created Linear issue')
+            );
+            
+            if (linearComment) {
+              // Extract Linear issue ID and update status
+              // This would require parsing the comment and making another API call
+              console.log('Would update Linear issue status');
+            }

@@ -1,0 +1,38 @@
+name: Webhook Relay Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  webhook-relay-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.WEBHOOK_RELAY_KEY != '' && secrets.WEBHOOK_RELAY_SECRET != '' }}
+    steps:
+      - name: Send Webhook Relay notification
+        run: |
+          payload=$(cat <<EOF
+          {
+            "event": "${{ github.event_name }}",
+            "action": "${{ github.event.action }}",
+            "repository": "${{ github.repository }}",
+            "sender": "${{ github.actor }}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "data": ${{ toJSON(github.event) }}
+          }
+          EOF
+          )
+          
+          curl -X POST \
+            "https://my.webhookrelay.com/v1/webhooks/${{ secrets.WEBHOOK_RELAY_KEY }}" \
+            -H "Content-Type: application/json" \
+            -H "X-Webhook-Relay-Key: ${{ secrets.WEBHOOK_RELAY_KEY }}" \
+            -H "X-Webhook-Relay-Secret: ${{ secrets.WEBHOOK_RELAY_SECRET }}" \
+            -d "$payload"

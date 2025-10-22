@@ -1,0 +1,46 @@
+name: RabbitMQ Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published"]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  rabbitmq-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.RABBITMQ_URL != '' }}
+    steps:
+      - name: Send message to RabbitMQ
+        run: |
+          payload=$(cat <<EOF
+          {
+            "event": "${{ github.event_name }}",
+            "action": "${{ github.event.action }}",
+            "repository": "${{ github.repository }}",
+            "sender": "${{ github.actor }}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "data": ${{ toJSON(github.event) }}
+          }
+          EOF
+          )
+          
+          # Install rabbitmqadmin
+          wget -O rabbitmqadmin https://raw.githubusercontent.com/rabbitmq/rabbitmq-management/v3.8.9/bin/rabbitmqadmin
+          chmod +x rabbitmqadmin
+          
+          # Send message
+          ./rabbitmqadmin \
+            --host="${{ secrets.RABBITMQ_HOST }}" \
+            --port="${{ secrets.RABBITMQ_PORT }}" \
+            --username="${{ secrets.RABBITMQ_USERNAME }}" \
+            --password="${{ secrets.RABBITMQ_PASSWORD }}" \
+            publish \
+            exchange="${{ secrets.RABBITMQ_EXCHANGE }}" \
+            routing_key="${{ secrets.RABBITMQ_ROUTING_KEY }}" \
+            payload="$payload"

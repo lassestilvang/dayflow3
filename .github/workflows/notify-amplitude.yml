@@ -1,0 +1,42 @@
+name: Amplitude Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published"]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  amplitude-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.AMPLITUDE_API_KEY != '' }}
+    steps:
+      - name: Send data to Amplitude
+        run: |
+          payload=$(cat <<EOF
+          {
+            "event_type": "${{ github.event_name }}_${{ github.event.action }}",
+            "user_id": "${{ github.actor }}",
+            "event_properties": {
+              "repository": "${{ github.repository }}",
+              "sender": "${{ github.actor }}",
+              "data": ${{ toJSON(github.event) }}
+            },
+            "time": $(date +%s)000
+          }
+          EOF
+          )
+          
+          curl -X POST \
+            "https://api2.amplitude.com/2/httpapi" \
+            -H "Content-Type: application/json" \
+            -H "Accept: */*" \
+            -d '{
+              "api_key": "${{ secrets.AMPLITUDE_API_KEY }}",
+              "events": ['$payload']
+            }'

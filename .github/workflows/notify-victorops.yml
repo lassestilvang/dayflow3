@@ -1,0 +1,60 @@
+name: VictorOps Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  victorops-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.VICTOROPS_WEBHOOK_URL != '' }}
+    steps:
+      - name: Send VictorOps alert on CI failure
+        if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'failure'
+        run: |
+          curl -X POST \
+            "${{ secrets.VICTOROPS_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "message_type": "CRITICAL",
+              "entity_id": "ci-failure-${{ github.run_id }}",
+              "entity_display_name": "CI Workflow Failed: ${{ github.event.workflow_run.name }}",
+              "monitoring_tool": "GitHub Actions",
+              "state_message": "The CI workflow has failed and requires attention.",
+              "custom_details": {
+                "repository": "${{ github.repository }}",
+                "workflow": "${{ github.event.workflow_run.name }}",
+                "branch": "${{ github.event.workflow_run.head_branch }}",
+                "commit": "${{ github.event.workflow_run.head_commit.message }}",
+                "actor": "${{ github.event.workflow_run.head_commit.author.name }}",
+                "url": "${{ github.event.workflow_run.html_url }}"
+              }
+            }'
+
+      - name: Send VictorOps alert on critical issues
+        if: github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'critical')
+        run: |
+          curl -X POST \
+            "${{ secrets.VICTOROPS_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "message_type": "CRITICAL",
+              "entity_id": "critical-issue-${{ github.event.issue.number }}",
+              "entity_display_name": "Critical Issue: ${{ github.event.issue.title }}",
+              "monitoring_tool": "GitHub Issues",
+              "state_message": "A critical issue has been opened and requires immediate attention.",
+              "custom_details": {
+                "repository": "${{ github.repository }}",
+                "issue": "${{ github.event.issue.title }}",
+                "author": "${{ github.event.issue.user.login }}",
+                "labels": "${{ join(github.event.issue.labels.*.name, ', ') }}",
+                "url": "${{ github.event.issue.html_url }}"
+              }
+            }'

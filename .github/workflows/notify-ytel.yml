@@ -1,0 +1,32 @@
+name: Ytel Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published"]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  ytel-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.YTEL_ACCOUNT_SID != '' && secrets.YTEL_AUTH_TOKEN != '' }}
+    steps:
+      - name: Send SMS via Ytel
+        run: |
+          message="GitHub Event: ${{ github.event_name }} - ${{ github.event.action }}. Repository: ${{ github.repository }}. Sender: ${{ github.actor }}."
+          
+          curl -X POST \
+            "https://api.ytel.com/api/v3/sms/send" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "AccountSid": "${{ secrets.YTEL_ACCOUNT_SID }}",
+              "AuthToken": "${{ secrets.YTEL_AUTH_TOKEN }}",
+              "From": "${{ secrets.YTEL_FROM_NUMBER }}",
+              "To": "${{ secrets.YTEL_TO_NUMBER }}",
+              "Body": "'$message'"
+            }'

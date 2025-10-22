@@ -1,0 +1,31 @@
+name: Plivo Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published"]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  plivo-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.PLIVO_AUTH_ID != '' && secrets.PLIVO_AUTH_TOKEN != '' }}
+    steps:
+      - name: Send SMS via Plivo
+        run: |
+          message="GitHub Event: ${{ github.event_name }} - ${{ github.event.action }}. Repository: ${{ github.repository }}. Sender: ${{ github.actor }}."
+          
+          curl -X POST \
+            "https://api.plivo.com/v1/Account/${{ secrets.PLIVO_AUTH_ID }}/Message/" \
+            -H "Content-Type: application/json" \
+            -u "${{ secrets.PLIVO_AUTH_ID }}:${{ secrets.PLIVO_AUTH_TOKEN }}" \
+            -d '{
+              "src": "${{ secrets.PLIVO_FROM_NUMBER }}",
+              "dst": "${{ secrets.PLIVO_TO_NUMBER }}",
+              "text": "'$message'"
+            }'

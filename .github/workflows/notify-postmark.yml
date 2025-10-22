@@ -1,0 +1,35 @@
+name: Postmark Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published"]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  postmark-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.POSTMARK_API_TOKEN != '' }}
+    steps:
+      - name: Send email via Postmark
+        run: |
+          payload=$(cat <<EOF
+          {
+            "From": "${{ secrets.POSTMARK_FROM_EMAIL }}",
+            "To": "${{ secrets.POSTMARK_TO_EMAIL }}",
+            "Subject": "GitHub Event: ${{ github.event_name }} - ${{ github.event.action }}",
+            "TextBody": "Event: ${{ github.event_name }}\\nAction: ${{ github.event.action }}\\nRepository: ${{ github.repository }}\\nSender: ${{ github.actor }}\\nTimestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)\\n\\n${{ github.event_name == 'pull_request' && format('PR: %s', github.event.pull_request.title) || '' }}\\n${{ github.event_name == 'issues' && format('Issue: %s', github.event.issue.title) || '' }}\\n${{ github.event_name == 'release' && format('Release: %s', github.event.release.name) || '' }}\\n\\n${{ github.event_name == 'pull_request' && github.event.pull_request.html_url || github.event_name == 'issues' && github.event.issue.html_url || github.event.release.html_url }}"
+          }
+          EOF
+          )
+          
+          curl -X POST \
+            "https://api.postmarkapp.com/email" \
+            -H "X-Postmark-Server-Token: ${{ secrets.POSTMARK_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "$payload"

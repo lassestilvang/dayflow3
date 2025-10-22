@@ -1,0 +1,70 @@
+name: Airbrake Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  airbrake-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.AIRBRAKE_PROJECT_ID != '' && secrets.AIRBRAKE_PROJECT_KEY != '' }}
+    steps:
+      - name: Send Airbrake error on CI failure
+        if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'failure'
+        run: |
+          curl -X POST \
+            "https://airbrake.io/api/v3/projects/${{ secrets.AIRBRAKE_PROJECT_ID }}/notices" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "notice": {
+                "errors": [{
+                  "type": "CIWorkflowFailure",
+                  "message": "The CI workflow has failed and requires attention"
+                }],
+                "context": {
+                  "environment": "ci",
+                  "hostname": "github-actions",
+                  "repository": "${{ github.repository }}",
+                  "workflow": "${{ github.event.workflow_run.name }}",
+                  "branch": "${{ github.event.workflow_run.head_branch }}",
+                  "commit": "${{ github.event.workflow_run.head_commit.message }}",
+                  "actor": "${{ github.event.workflow_run.head_commit.author.name }}",
+                  "url": "${{ github.event.workflow_run.html_url }}"
+                },
+                "environment": "ci",
+                "session": {}
+              }
+            }'
+
+      - name: Send Airbrake error on critical issues
+        if: github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'critical')
+        run: |
+          curl -X POST \
+            "https://airbrake.io/api/v3/projects/${{ secrets.AIRBRAKE_PROJECT_ID }}/notices" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "notice": {
+                "errors": [{
+                  "type": "CriticalIssueOpened",
+                  "message": "A critical issue has been opened and requires immediate attention"
+                }],
+                "context": {
+                  "environment": "github",
+                  "hostname": "github.com",
+                  "repository": "${{ github.repository }}",
+                  "issue": "${{ github.event.issue.title }}",
+                  "author": "${{ github.event.issue.user.login }}",
+                  "labels": "${{ join(github.event.issue.labels.*.name, ', ') }}",
+                  "url": "${{ github.event.issue.html_url }}"
+                },
+                "environment": "github",
+                "session": {}
+              }
+            }'

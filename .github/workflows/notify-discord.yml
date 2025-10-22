@@ -1,0 +1,49 @@
+name: Discord Notifications
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review]
+  issues:
+    types: [opened, closed]
+  release:
+    types: [published]
+
+jobs:
+  notify-discord:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.DISCORD_WEBHOOK_URL != '' }}
+    steps:
+      - name: Notify Discord on PR events
+        if: github.event_name == 'pull_request'
+        uses: sarisia/actions-status-discord@v1
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          title: Pull Request ${{ github.event.action }}
+          description: |
+            **${{ github.event.pull_request.title }}**
+            By: ${{ github.event.pull_request.user.login }}
+            ${{ github.event.pull_request.html_url }}
+          color: ${{ github.event.action == 'opened' && '0x00ff00' || github.event.action == 'closed' && github.event.pull_request.merged && '0x00ff00' || '0xff0000' }}
+
+      - name: Notify Discord on issue events
+        if: github.event_name == 'issues'
+        uses: sarisia/actions-status-discord@v1
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          title: Issue ${{ github.event.action }}
+          description: |
+            **${{ github.event.issue.title }}**
+            By: ${{ github.event.issue.user.login }}
+            ${{ github.event.issue.html_url }}
+          color: ${{ github.event.action == 'opened' && '0x00ff00' || '0xff0000' }}
+
+      - name: Notify Discord on release
+        if: github.event_name == 'release'
+        uses: sarisia/actions-status-discord@v1
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          title: 🚀 New Release
+          description: |
+            **${{ github.event.release.name }}**
+            ${{ github.event.release.html_url }}
+          color: 0x00ff00

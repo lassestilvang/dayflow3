@@ -1,0 +1,29 @@
+name: Textlocal Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published"]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  textlocal-notify:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.TEXTLOCAL_API_KEY != '' }}
+    steps:
+      - name: Send SMS via Textlocal
+        run: |
+          message="GitHub Event: ${{ github.event_name }} - ${{ github.event.action }}. Repository: ${{ github.repository }}. Sender: ${{ github.actor }}."
+          
+          curl -X POST \
+            "https://api.textlocal.in/send" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "apikey=${{ secrets.TEXTLOCAL_API_KEY }}" \
+            -d "numbers=${{ secrets.TEXTLOCAL_TO_NUMBER }}" \
+            -d "message=$message" \
+            -d "sender=${{ secrets.TEXTLOCAL_SENDER_ID }}"

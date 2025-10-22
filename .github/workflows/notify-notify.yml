@@ -1,0 +1,31 @@
+name: Notify.dev Integration
+
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, merged]
+  issues:
+    types: [opened, closed, labeled]
+  release:
+    types: [published]
+
+jobs:
+  notify-dev:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.NOTIFY_API_KEY != '' }}
+    steps:
+      - name: Send notification via Notify.dev
+        run: |
+          curl -X POST \
+            "https://api.notify.dev/v1/send" \
+            -H "Authorization: Bearer ${{ secrets.NOTIFY_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "message": {
+                "title": "${{ github.event_name }} - ${{ github.event.action }}",
+                "body": "${{ github.event_name == '\''pull_request'\'' && github.event.pull_request.title || github.event_name == '\''issues'\'' && github.event.issue.title || github.event.release.name }}",
+                "icon": "https://github.com/${{ github.repository }}.png",
+                "url": "${{ github.event_name == '\''pull_request'\'' && github.event.pull_request.html_url || github.event_name == '\''issues'\'' && github.event.issue.html_url || github.event.release.html_url }}",
+                "tags": ["github", "${{ github.event_name }}", "${{ github.repository }}"],
+                "priority": "normal"
+              }
+            }'

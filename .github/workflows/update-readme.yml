@@ -1,0 +1,76 @@
+name: Update README
+
+on:
+  push:
+    branches: [main]
+    paths: ['package.json']
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sunday
+  workflow_dispatch:
+
+jobs:
+  update-readme:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Get package info
+        id: package
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          DESCRIPTION=$(node -p "require('./package.json').description")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "description=$DESCRIPTION" >> $GITHUB_OUTPUT
+
+      - name: Update README with latest info
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const packageInfo = {
+              version: '${{ steps.package.outputs.version }}',
+              description: '${{ steps.package.outputs.description }}'
+            };
+
+            // Read current README
+            let readme = fs.readFileSync('README.md', 'utf8');
+
+            // Update version badge if it exists
+            readme = readme.replace(
+              /!\[Version\]\(https:\/\/img\.shields\.io\/badge\/version-[^)]+\)/g,
+              `![Version](https://img.shields.io/badge/version-${packageInfo.version}-blue)`
+            );
+
+            // Update description if needed
+            if (!readme.includes(packageInfo.description)) {
+              const lines = readme.split('\n');
+              const titleIndex = lines.findIndex(line => line.startsWith('# '));
+              if (titleIndex !== -1 && lines[titleIndex + 1]) {
+                lines[titleIndex + 1] = packageInfo.description;
+                readme = lines.join('\n');
+              }
+            }
+
+            // Write updated README
+            fs.writeFileSync('README.md', readme);
+
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add README.md
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "docs: update README with latest package info"
+            git push
+          fi
