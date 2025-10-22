@@ -4,4 +4,8 @@ import { authConfig } from './config';
 const handler = NextAuth(authConfig);
 
 export { handler as GET, handler as POST };
-export const { auth, signIn, signOut } = NextAuth(authConfig);
+
+// For NextAuth v4, use getServerSession
+import { getServerSession } from 'next-auth/next';
+
+export const auth = () => getServerSession(authConfig);

@@ -25,7 +25,7 @@ describe('overlapUtils', () => {
     userId: 'test-user',
     title: `Task ${id}`,
     description: '',
-    category: 'work',
+    listId: 'list-1',
     completed: false,
     scheduledDate: new Date(2024, 0, 1),
     scheduledTime: `${startHour.toString().padStart(2, '0')}:00`,

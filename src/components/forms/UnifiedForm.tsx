@@ -12,6 +12,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Task, Event, Subtask, Attendee } from '@/types';
 import { cn } from '@/lib/utils';
+import { useListStore } from '@/store/useListStore';
+import { useEffect } from 'react';
 
 type FormType = 'task' | 'event';
 
@@ -29,7 +31,7 @@ export function UnifiedForm({ type: initialType = 'task', task, event, onSubmit,
   const [taskData, setTaskData] = useState({
     title: task?.title || '',
     description: task?.description || '',
-    category: task?.category || 'inbox',
+    listId: task?.listId || '',
     priority: task?.priority || 'medium',
     dueDate: task?.dueDate ? format(task.dueDate, 'yyyy-MM-dd') : '',
     scheduledDate: task?.scheduledDate ? format(task.scheduledDate, 'yyyy-MM-dd') : '',
@@ -37,6 +39,31 @@ export function UnifiedForm({ type: initialType = 'task', task, event, onSubmit,
     allDay: task?.allDay || false,
     duration: task?.duration?.toString() || '',
   });
+
+  const { lists, setLists, getDefaultList } = useListStore();
+
+  // Fetch lists when component mounts
+  useEffect(() => {
+    const fetchLists = async () => {
+      try {
+        const response = await fetch('/api/lists');
+        if (response.ok) {
+          const userLists = await response.json();
+          setLists(userLists);
+          
+          // Set default list if no listId is selected
+          if (!taskData.listId && userLists.length > 0) {
+            const defaultList = userLists.find((list: any) => list.isDefault) || userLists[0];
+            setTaskData(prev => ({ ...prev, listId: defaultList.id }));
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch lists:', error);
+      }
+    };
+    
+    fetchLists();
+  }, [setLists, taskData.listId]);
 
   const [eventData, setEventData] = useState({
     title: event?.title || '',
@@ -208,20 +235,26 @@ export function UnifiedForm({ type: initialType = 'task', task, event, onSubmit,
           {/* Task-specific fields */}
           {formType === 'task' && (
             <>
-              {/* Category and Priority */}
+              {/* List and Priority */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="category">Category</Label>
-                  <Select value={taskData.category} onValueChange={(value) => setTaskData({ ...taskData, category: value as Task['category'] })}>
+                  <Label htmlFor="list">List</Label>
+                  <Select value={taskData.listId} onValueChange={(value) => setTaskData({ ...taskData, listId: value })}>
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Select a list" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="inbox">Inbox</SelectItem>
-                      <SelectItem value="work">Work</SelectItem>
-                      <SelectItem value="family">Family</SelectItem>
-                      <SelectItem value="personal">Personal</SelectItem>
-                      <SelectItem value="travel">Travel</SelectItem>
+                      {lists.map((list) => (
+                        <SelectItem key={list.id} value={list.id}>
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="w-3 h-3 rounded-full" 
+                              style={{ backgroundColor: list.color }}
+                            />
+                            {list.name}
+                          </div>
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

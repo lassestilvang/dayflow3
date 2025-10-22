@@ -87,7 +87,7 @@ export function MainLayout({ children }: MainLayoutProps) {
             userId: 'user-1', // TODO: Get from auth context
             title: taskData.title || editingEvent.title,
             description: taskData.description || editingEvent.description,
-            category: taskData.category || 'inbox',
+            listId: taskData.listId || '',
             priority: taskData.priority || 'medium',
             completed: false,
             dueDate: taskData.dueDate,
@@ -160,7 +160,7 @@ export function MainLayout({ children }: MainLayoutProps) {
         userId: 'user-1', // TODO: Get from auth context
         title: taskData.title || '',
         description: taskData.description || '',
-        category: taskData.category || 'inbox',
+        listId: taskData.listId || '',
         priority: taskData.priority || 'medium',
         completed: false,
         dueDate: taskData.dueDate,

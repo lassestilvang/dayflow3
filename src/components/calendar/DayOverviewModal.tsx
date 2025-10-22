@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { Task, Event } from '@/types';
+import { useListStore } from '@/store/useListStore';
 
 interface DayOverviewModalProps {
   isOpen: boolean;
@@ -27,6 +28,16 @@ export function DayOverviewModal({
   onEditEvent,
   onEditTask,
 }: DayOverviewModalProps) {
+  const { lists } = useListStore();
+
+  const getTaskStyle = (listId: string) => {
+    const list = lists.find(l => l.id === listId);
+    const color = list?.color || '#6b7280';
+    return {
+      backgroundColor: `${color}20`,
+      color: color,
+    };
+  };
   const allItems = [
     ...events.map(event => ({ type: 'event' as const, data: event })),
     ...tasks.map(task => ({ type: 'task' as const, data: task }))
@@ -82,13 +93,9 @@ export function DayOverviewModal({
                     key={task.id}
                     className={cn(
                       'text-sm p-2 rounded cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-2',
-                      task.category === 'work' && 'bg-blue-100 text-blue-800',
-                      task.category === 'family' && 'bg-green-100 text-green-800',
-                      task.category === 'personal' && 'bg-orange-100 text-orange-800',
-                      task.category === 'travel' && 'bg-purple-100 text-purple-800',
-                      task.category === 'inbox' && 'bg-gray-100 text-gray-800',
                       task.completed && 'opacity-60'
                     )}
+                    style={getTaskStyle(task.listId)}
                     onClick={() => {
                       onEditTask(task);
                       onClose();

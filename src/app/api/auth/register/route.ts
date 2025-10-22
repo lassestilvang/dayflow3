@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
+import { seedDefaultLists } from '@/lib/db/migrate-lists';
 
 export async function POST(request: NextRequest) {
   try {
@@ -45,6 +46,14 @@ export async function POST(request: NextRequest) {
         password: hashedPassword,
       })
       .returning({ id: users.id, email: users.email, name: users.name });
+
+    // Seed default lists for the new user
+    try {
+      await seedDefaultLists(newUser[0].id);
+    } catch (error) {
+      console.error('Failed to seed default lists:', error);
+      // Don't fail registration if list seeding fails
+    }
 
     return NextResponse.json(
       { 

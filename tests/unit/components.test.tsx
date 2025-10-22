@@ -10,7 +10,7 @@ const mockTasks: Task[] = [
     userId: 'user1',
     title: 'Test Task',
     description: 'Test description',
-    category: 'work',
+    listId: 'list-1',
     priority: 'medium',
     completed: false,
     dueDate: new Date('2024-01-25'),

@@ -1,10 +1,21 @@
 import { pgTable, text, timestamp, boolean, integer, uuid, jsonb, pgEnum } from 'drizzle-orm/pg-core';
 
-export const taskCategoryEnum = pgEnum('task_category', ['inbox', 'work', 'family', 'personal', 'travel']);
+
 export const taskPriorityEnum = pgEnum('task_priority', ['low', 'medium', 'high']);
 export const eventTypeEnum = pgEnum('event_type', ['meeting', 'appointment', 'reminder', 'deadline']);
 export const timeFormatEnum = pgEnum('time_format', ['12h', '24h']);
 export const weekStartEnum = pgEnum('week_start', ['sunday', 'monday']);
+
+export const lists = pgTable('lists', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  color: text('color').notNull().default('#6b7280'),
+  icon: text('icon').notNull().default('CheckSquare'),
+  isDefault: boolean('is_default').default(false), // for inbox list
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
 
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -24,7 +35,7 @@ export const tasks = pgTable('tasks', {
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   title: text('title').notNull(),
   description: text('description'),
-  category: taskCategoryEnum('category').default('inbox'),
+  listId: uuid('list_id').notNull().references(() => lists.id, { onDelete: 'restrict' }),
   priority: taskPriorityEnum('priority').default('medium'),
   completed: boolean('completed').default(false),
   completedAt: timestamp('completed_at'), // when task was marked as completed
@@ -90,3 +101,5 @@ export type Integration = typeof integrations.$inferSelect;
 export type NewIntegration = typeof integrations.$inferInsert;
 export type SharedEvent = typeof sharedEvents.$inferSelect;
 export type NewSharedEvent = typeof sharedEvents.$inferInsert;
+export type List = typeof lists.$inferSelect;
+export type NewList = typeof lists.$inferInsert;

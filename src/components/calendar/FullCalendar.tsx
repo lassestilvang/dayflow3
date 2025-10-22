@@ -13,9 +13,9 @@ import {
   useTaskStore,
   useUIStore,
   useSettingsStore,
+  useListStore,
 } from "@/store";
 import { Task, Event } from "@/types";
-import { createFullCalendarFormatters } from "@/lib/dateUtils";
 
 interface FullCalendarComponentProps {
   sidebarRef?: React.RefObject<HTMLElement | null>;
@@ -29,28 +29,26 @@ export function FullCalendarComponent({
   const { tasks, updateTask } = useTaskStore();
   const { setEditingEvent, setEditingTask, setCreateDialogData, clearCalendarSelection: clearSelectionFromStore } = useUIStore();
   const { settings } = useSettingsStore();
+  const { lists } = useListStore();
   const calendarRef = useRef<FullCalendar>(null);
   const [, setDraggableInstance] = useState<Draggable | null>(null);
   const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
 
-  // Get color for task category
-  const getTaskColor = useCallback((category: string, completed: boolean) => {
-    const colors: Record<string, { bg: string; border: string; text: string }> =
-      {
-        inbox: { bg: "#6b728020", border: "#6b7280", text: "#6b7280" },
-        overdue: { bg: "#dc262620", border: "#dc2626", text: "#dc2626" },
-        work: { bg: "#2563eb20", border: "#2563eb", text: "#2563eb" },
-        family: { bg: "#16a34a20", border: "#16a34a", text: "#16a34a" },
-        personal: { bg: "#ea580c20", border: "#ea580c", text: "#ea580c" },
-        travel: { bg: "#9333ea20", border: "#9333ea", text: "#9333ea" },
-      };
-
+  // Get color for task list
+  const getTaskColor = useCallback((listId: string, completed: boolean) => {
+    const list = lists.find(l => l.id === listId);
+    const color = list?.color || '#6b7280';
+    
     if (completed) {
       return { bg: "#22c55e20", border: "#22c55e", text: "#22c55e" };
     }
 
-    return colors[category] || colors.inbox;
-  }, []);
+    return { 
+      bg: `${color}20`, 
+      border: color, 
+      text: color 
+    };
+  }, [lists]);
 
   // Convert single task to FullCalendar event format
   const convertTaskToEvent = useCallback(
@@ -74,7 +72,7 @@ export function FullCalendarComponent({
         end = new Date(start.getTime() + 60 * 60 * 1000); // Default 1 hour
       }
 
-      const colors = getTaskColor(task.category, task.completed);
+      const colors = getTaskColor(task.listId, task.completed);
 
       return {
         id: task.id,

@@ -23,8 +23,8 @@ interface TaskStore {
   setError: (error: string | null) => void;
   
   // Filters
-  getTasksByCategory: (category: string) => Task[];
-  getCompletedTasksByCategory: (category: string) => Task[];
+  getTasksByList: (listId: string) => Task[];
+  getCompletedTasksByList: (listId: string) => Task[];
   getOverdueTasks: () => Task[];
   getTasksForDate: (date: Date) => Task[];
   getCompletedTasks: () => Task[];
@@ -228,14 +228,14 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   setLoading: (loading) => set({ isLoading: loading }),
   setError: (error) => set({ error }),
   
-  getTasksByCategory: (category) => {
+  getTasksByList: (listId) => {
     const { tasks } = get();
-    return tasks.filter((task) => task.category === category && !task.completed);
+    return tasks.filter((task) => task.listId === listId && !task.completed);
   },
   
-  getCompletedTasksByCategory: (category) => {
+  getCompletedTasksByList: (listId) => {
     const { tasks } = get();
-    return tasks.filter((task) => task.category === category && task.completed);
+    return tasks.filter((task) => task.listId === listId && task.completed);
   },
   
   getOverdueTasks: () => {

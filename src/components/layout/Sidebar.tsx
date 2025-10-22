@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, forwardRef } from 'react';
+import { useState, forwardRef, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { startOfDay } from 'date-fns';
 import { 
@@ -9,7 +9,6 @@ import {
   Clock, 
   Users, 
   Settings,
-  Plus,
   ChevronDown,
   ChevronRight,
   GripVertical
@@ -21,8 +20,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { UnifiedForm } from '@/components/forms/UnifiedForm';
 import { SettingsModal } from '@/components/settings/SettingsModal';
-import { useTaskStore, useEventStore, useUIStore, useSettingsStore } from '@/store';
+import { useTaskStore, useEventStore, useUIStore, useSettingsStore, useListStore } from '@/store';
 import { Task, Event } from '@/types';
+import { ListForm } from '@/components/lists/ListForm';
+import { ListManager } from '@/components/lists/ListManager';
+import { Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDraggable } from '@dnd-kit/core';
 import { formatDate, formatDateTime } from '@/lib/dateUtils';
@@ -33,6 +35,7 @@ interface TaskCategory {
   icon: React.ReactNode;
   color: string;
   count: number;
+  isDefault?: boolean;
 }
 
 interface DraggableTaskProps {
@@ -81,14 +84,44 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(({ onResizeMouse
   const [showUnifiedDialog, setShowUnifiedDialog] = useState(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [formType, setFormType] = useState<'task' | 'event'>('task');
-  const { getTasksByCategory, getCompletedTasksByCategory, getOverdueTasks, addTask, updateTask } = useTaskStore();
+  const { getTasksByList, getCompletedTasksByList, getOverdueTasks, addTask, updateTask } = useTaskStore();
   const { addEvent } = useEventStore();
   const { setEditingTask, clearCalendarSelection } = useUIStore();
   const { settings, updateSettings } = useSettingsStore();
+  const { lists, setLists, addList, getDefaultList } = useListStore();
+  const [showListDialog, setShowListDialog] = useState(false);
+  
+  // Fetch lists on component mount
+  useEffect(() => {
+    const fetchLists = async () => {
+      try {
+        const response = await fetch('/api/lists');
+        if (response.ok) {
+          const userLists = await response.json();
+          setLists(userLists);
+        }
+      } catch (error) {
+        console.error('Failed to fetch lists:', error);
+      }
+    };
+    
+    fetchLists();
+  }, [setLists]);
   
   const overdueTasks = getOverdueTasks();
   const overdueCount = overdueTasks.length;
   
+  // Create dynamic categories from lists + overdue
+  const defaultList = getDefaultList();
+  const listCategories = lists.map(list => ({
+    id: list.id,
+    name: list.name,
+    icon: <CheckSquare className="h-4 w-4" />,
+    color: `text-[${list.color}]`,
+    count: getTasksByList(list.id).length,
+    isDefault: list.isDefault,
+  }));
+
   const categories: TaskCategory[] = [
     {
       id: 'overdue',
@@ -97,41 +130,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(({ onResizeMouse
       color: 'text-red-600',
       count: overdueCount,
     },
-    {
-      id: 'inbox',
-      name: 'Inbox',
-      icon: <CheckSquare className="h-4 w-4" />,
-      color: 'text-gray-600',
-      count: getTasksByCategory('inbox').length,
-    },
-    {
-      id: 'work',
-      name: 'Work',
-      icon: <CheckSquare className="h-4 w-4" />,
-      color: 'text-blue-600',
-      count: getTasksByCategory('work').length,
-    },
-    {
-      id: 'family',
-      name: 'Family',
-      icon: <Users className="h-4 w-4" />,
-      color: 'text-green-600',
-      count: getTasksByCategory('family').length,
-    },
-    {
-      id: 'personal',
-      name: 'Personal',
-      icon: <CheckSquare className="h-4 w-4" />,
-      color: 'text-orange-600',
-      count: getTasksByCategory('personal').length,
-    },
-    {
-      id: 'travel',
-      name: 'Travel',
-      icon: <Calendar className="h-4 w-4" />,
-      color: 'text-purple-600',
-      count: getTasksByCategory('travel').length,
-    },
+    ...listCategories,
   ];
 
   const toggleCategory = (categoryId: string) => {
@@ -159,7 +158,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(({ onResizeMouse
         userId: session.user.id,
         title: taskData.title!,
         description: taskData.description,
-        category: taskData.category || 'inbox',
+        listId: taskData.listId || defaultList?.id || '',
         priority: taskData.priority || 'medium',
         completed: false,
         dueDate: taskData.dueDate,
@@ -255,15 +254,26 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(({ onResizeMouse
       {/* Task Categories */}
       <div className="flex-1 overflow-y-auto min-h-0">
         <div className="p-4">
-          <h3 className="text-sm font-medium text-muted-foreground mb-3">Tasks</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-medium text-muted-foreground">Tasks</h3>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setShowListDialog(true)}
+              className="h-6 px-2 text-xs"
+            >
+              <Plus className="h-3 w-3 mr-1" />
+              Add List
+            </Button>
+          </div>
           <div className="space-y-1">
             {categories.map((category) => (
               <div key={category.id}>
-                <button
-                  onClick={() => toggleCategory(category.id)}
-                  className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-accent transition-colors"
-                >
-                  <div className="flex items-center gap-3">
+                <div className="flex items-center justify-between p-2 rounded-lg hover:bg-accent transition-colors">
+                  <button
+                    onClick={() => toggleCategory(category.id)}
+                    className="flex items-center gap-3 flex-1"
+                  >
                     {expandedCategories.includes(category.id) ? (
                       <ChevronDown className="h-3 w-3" />
                     ) : (
@@ -271,13 +281,22 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(({ onResizeMouse
                     )}
                     <span className={category.color}>{category.icon}</span>
                     <span className="text-sm font-medium">{category.name}</span>
+                  </button>
+                  <div className="flex items-center gap-2">
+                    {category.count > 0 && (
+                      <Badge variant="secondary" className="text-xs">
+                        {category.count}
+                      </Badge>
+                    )}
+                    {category.isDefault !== true && category.id !== 'overdue' && (
+                      <ListManager
+                        listId={category.id}
+                        listName={category.name}
+                        isDefault={category.isDefault}
+                      />
+                    )}
                   </div>
-                  {category.count > 0 && (
-                    <Badge variant="secondary" className="text-xs">
-                      {category.count}
-                    </Badge>
-                  )}
-                </button>
+                </div>
                 
                 {expandedCategories.includes(category.id) && (
                   <div className="ml-8 mt-1 space-y-1">
@@ -326,7 +345,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(({ onResizeMouse
                         )}
                       </>
                     ) : (
-                      getTasksByCategory(category.id).map((task) => (
+                      getTasksByList(category.id).map((task) => (
                         <DraggableTask key={task.id} task={task}>
                           <div
                             className="text-xs p-2 rounded hover:bg-accent cursor-pointer flex items-center gap-2"
@@ -374,7 +393,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(({ onResizeMouse
           <h3 className="text-sm font-medium text-muted-foreground mb-3">Completed Tasks</h3>
           <div className="space-y-1">
             {categories.filter(cat => cat.id !== 'overdue').map((category) => {
-              const completedTasks = getCompletedTasksByCategory(category.id);
+              const completedTasks = getCompletedTasksByList(category.id);
               const completedCount = completedTasks.length;
               
               if (completedCount === 0) return null;
@@ -490,6 +509,12 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(({ onResizeMouse
         onOpenChange={setShowSettingsDialog}
         settings={settings}
         onSave={updateSettings}
+      />
+
+      {/* List Form Dialog */}
+      <ListForm
+        isOpen={showListDialog}
+        onClose={() => setShowListDialog(false)}
       />
       </div>
       

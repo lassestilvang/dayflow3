@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Task } from '@/types';
 import { cn } from '@/lib/utils';
-import { useSettingsStore } from '@/store';
+import { useSettingsStore, useListStore } from '@/store';
 import { formatDate, formatDateTime, formatTimeOnly } from '@/lib/dateUtils';
 
 interface TaskListProps {
@@ -21,6 +21,8 @@ interface TaskListProps {
 
 export function TaskList({ tasks, title, onTaskClick, onTaskToggle, onTaskDelete }: TaskListProps) {
   const { settings } = useSettingsStore();
+  const { lists } = useListStore();
+  
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high': return 'bg-red-100 text-red-800 border-red-200';
@@ -30,15 +32,12 @@ export function TaskList({ tasks, title, onTaskClick, onTaskToggle, onTaskDelete
     }
   };
 
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case 'work': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'family': return 'bg-green-100 text-green-800 border-green-200';
-      case 'personal': return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'travel': return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'inbox': return 'bg-gray-100 text-gray-800 border-gray-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
+  const getListInfo = (listId: string) => {
+    const list = lists.find(l => l.id === listId);
+    return {
+      name: list?.name || 'Unknown',
+      color: list?.color || '#6b7280',
+    };
   };
 
   const isOverdue = (task: Task) => {
@@ -103,9 +102,17 @@ export function TaskList({ tasks, title, onTaskClick, onTaskToggle, onTaskDelete
 
                     {/* Metadata */}
                     <div className="flex items-center gap-2 flex-wrap">
-                      {/* Category */}
-                      <Badge variant="outline" className={cn('text-xs', getCategoryColor(task.category))}>
-                        {task.category}
+                      {/* List */}
+                      <Badge 
+                        variant="outline" 
+                        className="text-xs"
+                        style={{ 
+                          backgroundColor: `${getListInfo(task.listId).color}20`,
+                          borderColor: getListInfo(task.listId).color,
+                          color: getListInfo(task.listId).color
+                        }}
+                      >
+                        {getListInfo(task.listId).name}
                       </Badge>
 
                       {/* Priority */}

@@ -10,7 +10,7 @@ const mockTasks = [
     id: '1',
     userId: 'user1',
     title: 'Test Task',
-    category: 'work' as const,
+    listId: 'list-1',
     priority: 'medium' as const,
     completed: false,
     allDay: false,
@@ -21,7 +21,7 @@ const mockTasks = [
     id: '2',
     userId: 'user1',
     title: 'Completed Task',
-    category: 'personal' as const,
+    listId: 'list-2',
     priority: 'low' as const,
     completed: true,
     allDay: false,
@@ -91,16 +91,16 @@ describe('Task Store', () => {
     expect(result.current.tasks[0].completed).toBe(true);
   });
 
-  it('should filter tasks by category', () => {
+  it('should filter tasks by list', () => {
     const { result } = renderHook(() => useTaskStore());
     
     act(() => {
       result.current.setTasks(mockTasks);
     });
 
-    const workTasks = result.current.getTasksByCategory('work');
-    expect(workTasks).toHaveLength(1);
-    expect(workTasks[0].category).toBe('work');
+    const listTasks = result.current.getTasksByList('list-1');
+    expect(listTasks).toHaveLength(1);
+    expect(listTasks[0].listId).toBe('list-1');
   });
 
   it('should get completed tasks', () => {

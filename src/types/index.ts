@@ -3,7 +3,7 @@ export interface Task {
   userId: string;
   title: string;
   description?: string;
-  category: 'inbox' | 'work' | 'family' | 'personal' | 'travel';
+  listId: string;
   priority: 'low' | 'medium' | 'high';
   completed: boolean;
   completedAt?: Date;
@@ -78,6 +78,17 @@ export interface Integration {
   expiresAt?: Date;
   metadata?: Record<string, unknown>;
   isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface List {
+  id: string;
+  userId: string;
+  name: string;
+  color: string;
+  icon: string;
+  isDefault: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
